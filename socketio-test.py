@@ -1,7 +1,7 @@
 import socketio
 
 sio = socketio.Client()
-uid = 'dianeto@gmail.com'
+uid = 'test@test.com'
 
 @sio.event
 def connect():
