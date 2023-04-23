@@ -4,10 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-websocket-client = "*"
 rel = "*"
-python-socketio = "*"
 requests = "*"
+obsws-python = "*"
+pysimplegui = "*"
+python-socketio = "*"
 
 [dev-packages]
 
