@@ -1,14 +1,17 @@
-import PySimpleGUI as sg
 import obsws_python as obs
+import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
+import inspect
+import multiprocessing as mp
+import queue, threading
 
+# Create a queue to communicate between threads
+queue = queue.Queue()
 
 def debug(text):
     # make colorful and styled text
     print(f'\033[92m{text}\033[0m')
 
-
 cl = None
-
 
 def _write_settings(ip, port, password):
     with open('obs_settings.txt', 'w') as f:
@@ -59,8 +62,7 @@ class Scenes:
 def is_text(item):
     return 'text' in item['inputKind']
 
-
-def _connect_to_obs():
+def connect_to_obs():
     try:
         global cl
         ip = window['ip'].get()
@@ -191,7 +193,7 @@ for name, func in available_functions:
     function_buttons.append(sg.Button(name, key=name, size=(12, 2), pad=((5, 5), (0, 5))))
 
 layout = [
-    [sg.Text(f"Not connected", key="connected", size=(40, 1)), sg.Button("Connect", key="_connect_to_obs")],
+    [sg.Text(f"Not connected", key="connected", size=(40, 1)), sg.Button("Connect", key="connect_to_obs")],
     [sg.Text("IP Address", size=(10, 1)), sg.InputText(ip, key="ip", size=(30, 1))],
     [sg.Text("Port", size=(10, 1)), sg.InputText(port, key="port", size=(30, 1))],
     [sg.Text("Password", size=(10, 1)), sg.InputText(password, key="password", size=(30, 1))],
@@ -213,6 +215,7 @@ def update_output(window, content):
         print("content", str(content))
         window["output"].update(str(content))
 
+<<<<<<< HEAD
 
 def secret():
     return password
@@ -239,3 +242,58 @@ def event_loop():
     #         print(e)
     #         update_output(window, e)  
     # window.close()
+=======
+# def event_loop():
+#     while True:
+#         try:
+#             event, values = window.read()
+#             if event in (sg.WIN_CLOSED, "exit"):
+#                 break
+#             elif event in globals():
+#                 function = globals()[event]
+#                 num_params = len(inspect.signature(function).parameters)
+#                 if num_params == 2:
+#                     result = function(values["field"], values["value"])
+#                 if num_params == 1:
+#                     result = function(values["value"])
+#                 else:
+#                     result = function()
+#                 update_output(window, result)
+#         except Exception as e:
+#             print(e)
+#             update_output(window, e)  
+#     window.close()
+
+def actions():
+    return [x[0] for x in available_functions]
+
+def event_loop(window):
+    print('start')
+    while True:
+        print('hi')
+        try:
+            event, values = queue.get()
+            print('get', event, values)
+            if event == "stop":
+                break
+            elif event in actions():
+                print('action', event)
+                function = globals()[event]
+                num_params = len(inspect.signature(function).parameters)
+                if num_params == 2:
+                    result = function(values["field"], values["value"])
+                elif num_params == 1:
+                    result = function(values["value"])
+                else:
+                    result = function()
+
+                print(event, values)
+                # Send the result back to the main thread
+                queue.put(("update_output", result))
+        except Exception as e:
+            # Send the exception back to the main thread
+            print('fail', e)
+            queue.put(("update_output", e))
+        print('bye')
+
+>>>>>>> threading

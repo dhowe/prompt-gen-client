@@ -3,10 +3,10 @@ import socketio
 import obs_control
 
 sio = socketio.Client()
+
 uid = 'test@test.com'
 dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
 global_driver = uid
-
 
 @sio.event
 def connect():
@@ -88,8 +88,7 @@ def update_obs(data):
 @sio.event
 def disconnect():
     print('...disconnected')
-
-
+    
 def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
