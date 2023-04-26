@@ -1,4 +1,3 @@
-import threading
 import socketio
 import obs_control
 
@@ -46,11 +45,10 @@ def update_subtitles(data):
     driver, message = authenticate_driver(data)
     if driver:
         try:
-            message = obs_control.send_subtitles(data.get("content", []))
-            updated = True
+            content = data.get("content", [])
+            updated, message = obs_control.send_subtitles(content)
         except Exception as e:
             message = str(e)
-            print(message)
     sio.emit('text_updated', {'updated': updated, 'message': message, "field": "subtitles"})
 
 
@@ -88,18 +86,9 @@ def update_obs(data):
 @sio.event
 def disconnect():
     print('...disconnected')
-    
+
 def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.connect(dashboard_url, auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.wait()
-
-
-if __name__ == '__main__':
-    gui_thread = threading.Thread(target=obs_control.event_loop)
-    listen_thread = threading.Thread(target=listen)
-    gui_thread.start()
-    listen_thread.start()
-    gui_thread.join()
-    listen_thread.join()

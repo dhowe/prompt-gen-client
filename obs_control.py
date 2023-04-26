@@ -5,121 +5,65 @@ import multiprocessing as mp
 import queue, threading
 
 # Create a queue to communicate between threads
-queue = queue.Queue()
+event_queue = queue.Queue()
 
 def debug(text):
     # make colorful and styled text
     print(f'\033[92m{text}\033[0m')
 
-cl = None
-
-def _write_settings(ip, port, password):
-    with open('obs_settings.txt', 'w') as f:
-        f.write(f'{ip} {port} {password}')
-
-
-def _read_obs_settings():
-    global cl, ip, port, password
-    with open('obs_settings.txt', 'r') as f:
-        ip, port, password = f.read().split(' ')
-        print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
-        try:
-            cl = obs.ReqClient(ip=ip, port=port, password=password)
-            return "Connected to OBS at " + ip + ":" + port
-        except ConnectionRefusedError:
-            return "Failed to connect to OBS at " + ip + ":" + port
-
-
-# read argument from command line
-_read_obs_settings()
-
 # Custom theme
 sg.theme("DarkTeal10")
-sg.set_options(font=("Helvetica", 17))
+sg.set_options(font=("Helvetica", 16))
 
-
-class Scenes:
-    def __init__(self):
-        self.i = 0
-
-    def cycle(self):
-        self.i -= 1
-        resp = cl.get_scene_list()
-        scenes = resp.scenes
-        n = len(scenes)
-
-        cur_scene = cl.get_current_program_scene()
-        scene = cur_scene.current_program_scene_name
-
-        new = scenes[self.i % n]
-        if new != scene:
-            cl.set_current_program_scene(new['sceneName'])
-            return f"Switching to new scene {new}"
-        else:
-            return None
-
-
-def is_text(item):
-    return 'text' in item['inputKind']
-
-def connect_to_obs():
-    try:
-        global cl
-        ip = window['ip'].get()
-        port = window['port'].get()
-        password = window['password'].get()
-        cl = obs.ReqClient(ip=ip, port=int(port), password=password)
-        _write_settings(ip, port, password)
-        message = 'Connected to OBS at ' + ip + ':' + port
-    except Exception as e:
-        message = 'Failed to connect to OBS at ' + ip + ':' + port + ' with password ' + password
-        message += e.__str__()
-    window['connected'].update(message)
-    return message
-
-
-def toggle_mic():
-    cl.toggle_input_mute('Mic/Aux')
-
-
-def show_items():
-    cur_scene = cl.get_current_program_scene().current_program_scene_name
-    items = cl.get_scene_item_list(cur_scene).scene_items
-    return items
-
-
-def show_inputs():
-    inputs = cl.get_input_list().inputs
-    return inputs
-
-
-def show_texts():
-    inputs = cl.get_input_list().inputs
-    print(inputs)
-    texts = [i for i in inputs if 'text' in i['inputKind']]
-    texts = [source['inputName'] for source in texts]
-    return texts
-
-
-# def toggle_enabled(name, nothing):
-#     enabled = cl.get_scene_item_enabled()
-
-class OBS:
+class OBSController:
     def __init__(self) -> None:
         self.dialogue_dyn = 'Dialogue Dynamic'
         self.dialogue_static = 'Dialogue Normal'
         self.topic = "Topic"
+        self.ip = None
+        self.port = None
+        self.password = None
+        self.cl = None
+        self.connected = False
+        self._read_obs_settings_from_file()
+    
+    def _write_settings(self, ip, port, password):
+        with open('obs_settings.txt', 'w') as f:
+            f.write(f'{ip} {port} {password}')
+
+    def _read_obs_settings_from_file(self):
+        with open('obs_settings.txt', 'r') as f:
+            ip, port, password = f.read().split(' ')
+            self.connect(ip, port, password)
+            
+    def connect(self, ip, port, password):
+        print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
+        try:
+            self.cl = obs.ReqClient(ip=ip, port=port, password=password)
+            self.ip = ip
+            self.port = port 
+            self.password = password
+            self.connected = True
+            return True, "Connected to OBS at " + ip + ":" + port
+        except ConnectionRefusedError:
+            return False, "Failed to connect to OBS at " + ip + ":" + port 
 
     def change_subtitles(self, lines):
-        n = len(lines)
-        text = "\n".join(lines)
-        text = text.strip()
-        text, too_big = self.split(text)
-        new = self.dialogue_static if too_big else self.dialogue_dyn
-        old = self.dialogue_dyn if too_big else self.dialogue_static
-        self.change_text(new, text)
-        self.change_text(old, "")
-        return f"Dialogue: {text}"
+        sent = False
+        if self.connected:
+            n = len(lines)
+            text = "\n".join(lines)
+            text = text.strip()
+            text, too_big = self.split(text)
+            new = self.dialogue_static if too_big else self.dialogue_dyn
+            old = self.dialogue_dyn if too_big else self.dialogue_static
+            self.change_text(new, text)
+            self.change_text(old, "")
+            message = f"Dialogue: {text}"
+            sent = True
+        else:
+            message = "Error: OBS Controller not connected"
+        return sent, message
 
     def split(self, text):
         words = text.split()
@@ -145,7 +89,7 @@ class OBS:
         try:
             global cl
             cl = obs.ReqClient(ip=ip, port=int(port), password=password)
-            _write_settings(ip, port, password)
+            self._write_settings(ip, port, password)
             message = 'Connected to OBS at ' + ip + ':' + port
         except Exception as e:
             message = 'Failed to connect to OBS at ' + ip + ':' + port + ' with password ' + password
@@ -158,19 +102,65 @@ class OBS:
             return "Enter a text source. One of: " + " ".join(show_texts())
 
         try:
-            settings = cl.get_input_settings(name).input_settings
+            settings = self.cl.get_input_settings(name).input_settings
             settings['text'] = new_text
-            cl.set_input_settings(name, settings, False)
+            self.cl.set_input_settings(name, settings, False)
             return f"'{name}' changed to '{new_text}'."
         except:
             msg = f"Failed to change '{name}' to '{new_text}'.\n"
-            msg += "Available text sources: " + show_texts()
+            msg += "Available text sources: " + " ".join(show_texts())
+
+class Scenes:
+    def __init__(self, obs_state):
+        self.i = 0
+        self.obsc = obs_state
+
+    def cycle(self):
+        self.i -= 1
+        resp = self.obsc.cl.get_scene_list()
+        scenes = resp.scenes
+        n = len(scenes)
+
+        cur_scene = self.obsc.cl.get_current_program_scene()
+        scene = cur_scene.current_program_scene_name
+
+        new = scenes[self.i % n]
+        print("Switching to new scene:", new)
+        if new != scene:
+            self.obsc.cl.set_current_program_scene(new['sceneName'])
+            return f"Switching to new scene {new}"
+        else:
+            return None
+        
+obsc = OBSController()
+obsc._read_obs_settings_from_file()
+scenes = Scenes(obsc)
+
+def is_text(item):
+    return 'text' in item['inputKind']
 
 
-obs_state = OBS()
+def show_items():
+    cur_scene = obsc.cl.get_current_program_scene().current_program_scene_name
+    items = obsc.cl.get_scene_item_list(cur_scene).scene_items
+    return items
 
-scenes = Scenes()
 
+def show_inputs():
+    inputs = obsc.cl.get_input_list().inputs
+    return inputs
+
+
+def show_texts():
+    inputs = obsc.cl.get_input_list().inputs
+    print(inputs)
+    texts = [i for i in inputs if 'text' in i['inputKind']]
+    texts = [source['inputName'] for source in texts]
+    return texts
+
+
+# def toggle_enabled(name, nothing):
+#     enabled = cl.get_scene_item_enabled()
 
 # Buttons
 def cycle_scenes():
@@ -178,25 +168,34 @@ def cycle_scenes():
 
 
 def send_subtitles(lines):
-    return obs_state.change_subtitles(lines)
+    return obsc.change_subtitles(lines)
 
 
 def change_text(name, new_text):
-    return obs_state.change_text(name, new_text)
+    return obsc.change_text(name, new_text)
+
+def connect_to_obs(self):
+    ip = window['ip'].get()
+    port = window['port'].get()
+    password = window['password'].get()
+    connected, message = obsc.connect(ip, port, password)
+    window['connected'].update(message)
+    return 'connected', message
 
 
 # Automatically generate buttons based on available functions
 function_buttons = []
+not_clickable = ["is_text", "update_output", "debug"]
 available_functions = [(name, func) for name, func in globals().items() if
-                       callable(func) and not name.startswith("_") and name != "update_output"]
+                       callable(func) and not name.startswith("_") and name not in not_clickable] 
 for name, func in available_functions:
     function_buttons.append(sg.Button(name, key=name, size=(12, 2), pad=((5, 5), (0, 5))))
 
 layout = [
     [sg.Text(f"Not connected", key="connected", size=(40, 1)), sg.Button("Connect", key="connect_to_obs")],
-    [sg.Text("IP Address", size=(10, 1)), sg.InputText(ip, key="ip", size=(30, 1))],
-    [sg.Text("Port", size=(10, 1)), sg.InputText(port, key="port", size=(30, 1))],
-    [sg.Text("Password", size=(10, 1)), sg.InputText(password, key="password", size=(30, 1))],
+    [sg.Text("IP Address", size=(10, 1)), sg.InputText(obsc.ip, key="ip", size=(30, 1))],
+    [sg.Text("Port", size=(10, 1)), sg.InputText(obsc.port, key="port", size=(30, 1))],
+    [sg.Text("Password", size=(10, 1)), sg.InputText(obsc.password, key="password", size=(30, 1))],
     # timer
     [sg.Text("Timer", size=(10, 1)), sg.Text("15:00", key="timer", size=(30, 1))],
     [sg.Text("Status", size=(10, 1)), sg.Multiline(size=(50, 4), key="output", disabled=True)],
@@ -209,60 +208,13 @@ layout = [
 
 window = sg.Window("OBS Control", layout)
 
-
 def update_output(window, content):
     if content:
         print("content", str(content))
         window["output"].update(str(content))
 
-<<<<<<< HEAD
-
 def secret():
-    return password
-
-
-def event_loop():
-    return
-    # while True:
-    #     try:
-    #         event, values = window.read()
-    #         if event in (sg.WIN_CLOSED, "exit"):
-    #             break
-    #         elif event in globals():
-    #             function = globals()[event]
-    #             num_params = len(inspect.signature(function).parameters)
-    #             if num_params == 2:
-    #                 result = function(values["field"], values["value"])
-    #             if num_params == 1:
-    #                 result = function(values["value"])
-    #             else:
-    #                 result = function()
-    #             update_output(window, result)
-    #     except Exception as e:
-    #         print(e)
-    #         update_output(window, e)  
-    # window.close()
-=======
-# def event_loop():
-#     while True:
-#         try:
-#             event, values = window.read()
-#             if event in (sg.WIN_CLOSED, "exit"):
-#                 break
-#             elif event in globals():
-#                 function = globals()[event]
-#                 num_params = len(inspect.signature(function).parameters)
-#                 if num_params == 2:
-#                     result = function(values["field"], values["value"])
-#                 if num_params == 1:
-#                     result = function(values["value"])
-#                 else:
-#                     result = function()
-#                 update_output(window, result)
-#         except Exception as e:
-#             print(e)
-#             update_output(window, e)  
-#     window.close()
+    return obsc.password
 
 def actions():
     return [x[0] for x in available_functions]
@@ -270,30 +222,32 @@ def actions():
 def event_loop(window):
     print('start')
     while True:
-        print('hi')
-        try:
-            event, values = queue.get()
-            print('get', event, values)
-            if event == "stop":
-                break
-            elif event in actions():
-                print('action', event)
-                function = globals()[event]
-                num_params = len(inspect.signature(function).parameters)
-                if num_params == 2:
-                    result = function(values["field"], values["value"])
-                elif num_params == 1:
-                    result = function(values["value"])
-                else:
-                    result = function()
+        event, values = event_queue.get()
+        print('get', event, values)
+        if event == "stop":
+            break
+        elif event in actions():
+            print('action', event)
+            function = globals()[event]
+            num_params = len(inspect.signature(function).parameters)
+            if num_params == 2:
+                result = function(values["field"], values["value"])
+            elif num_params == 1:
+                result = function(values["value"])
+            else:
+                result = function()
 
-                print(event, values)
-                # Send the result back to the main thread
-                queue.put(("update_output", result))
-        except Exception as e:
-            # Send the exception back to the main thread
-            print('fail', e)
-            queue.put(("update_output", e))
-        print('bye')
+            update_output(window, result)
+            # Send the result back to the main thread
+            event_queue.put(("update_output", result))
 
->>>>>>> threading
+        # try:
+        #     for button, _ in available_functions:
+        #         window[button].update(disabled=not connected)
+        # except Exception as e:
+        #     print(e)
+        # except Exception as e:
+        #     # Send the exception back to the main thread
+        #     print('fail', e)
+        #     event_queue.put(("update_output", e))
+        # print('bye')

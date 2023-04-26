@@ -18,6 +18,10 @@
 #     cl.set_current_program_scene("Cutscene")
 
 
+
+def toggle_mic():
+    cl.toggle_input_mute('Mic/Aux')
+
 def animate_text():
     cur_scene = cl.get_current_program_scene().current_program_scene_name
     items = cl.get_scene_item_list(cur_scene).scene_items
