@@ -1,9 +1,8 @@
 import socketio
 import obs_control
-import threading
 
 sio = socketio.Client()
-uid = 'test@test.com'
+uid = 'alex.calderwood@tenderclaws.com'
 driver = uid
 
 @sio.event
@@ -80,15 +79,20 @@ def update_obs(data):
 def disconnect():
     print('...disconnected')
 
+# def listen():
+#     sio.connect('ws://192.241.209.27:5050', auth={'uid': uid})
+#     #sio.connect('ws://localhost:5050', auth={'uid': uid}, wait_timeout=1)
+#     sio.wait()
+
+# if __name__ == '__main__':
+#     gui_thread = threading.Thread(target=obs_control.event_loop)
+#     listen_thread = threading.Thread(target=listen)
+#     gui_thread.start()
+#     listen_thread.start()
+#     gui_thread.join()
+#     listen_thread.join()
+
+
 def listen():
     sio.connect('ws://192.241.209.27:5050', auth={'uid': uid})
-    #sio.connect('ws://localhost:5050', auth={'uid': uid}, wait_timeout=1)
     sio.wait()
-
-if __name__ == '__main__':
-    gui_thread = threading.Thread(target=obs_control.event_loop)
-    listen_thread = threading.Thread(target=listen)
-    gui_thread.start()
-    listen_thread.start()
-    gui_thread.join()
-    listen_thread.join()
