@@ -10,14 +10,14 @@ event_queue = queue.Queue()
 
 def read_driver_uid():
     try:
-        with open(".driver_uid.txt", "r") as f:
+        with open(".driver_settings.txt", "r") as f:
             return f.read()
     except FileNotFoundError:
         return "test@test.com"
     
 def write_driver_uid(uid):
     print("writing uid", uid)
-    with open(".driver_uid.txt", "w") as f:
+    with open(".driver_settings.txt", "w") as f:
         f.write(uid)
 
 default_driver = read_driver_uid()
