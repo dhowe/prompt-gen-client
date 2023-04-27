@@ -1,3 +1,4 @@
+# A placeholder for functions that are being tested
 
 # # start a 15 min timer
 # # when timer is done, switch to a scene
@@ -17,7 +18,21 @@
 #     time.sleep(0.1 * 60)
 #     cl.set_current_program_scene("Cutscene")
 
+# def change_text(name, new_text):
+#     return obsc.change_text(name, new_text)
 
+def change_text(self, name, new_text):
+    if not name:
+        return "Enter a text source. One of: " + " ".join(show_texts())
+
+    try:
+        settings = self.cl.get_input_settings(name).input_settings
+        settings['text'] = new_text
+        self.cl.set_input_settings(name, settings, False)
+        return f"'{name}' changed to '{new_text}'."
+    except:
+        msg = f"Failed to change '{name}' to '{new_text}'.\n"
+        msg += "Available text sources: " + " ".join(show_texts())
 
 def toggle_mic():
     cl.toggle_input_mute('Mic/Aux')
@@ -40,5 +55,5 @@ def animate_text():
         transform['positionX'] = x
         cl.set_scene_item_transform("Scene", id, transform)
         time.sleep(0.1)
-
+    
     return items 

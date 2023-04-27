@@ -9,7 +9,6 @@ if __name__ == '__main__':
     listen_thread = threading.Thread(target=socketio_control.listen)
     listen_thread.start()
     gui_thread.start()
-
     
     # Main event loop
     while True:
@@ -20,6 +19,8 @@ if __name__ == '__main__':
 
         if event == obs_control.sg.WIN_CLOSED:
             break
+        elif event == "update_driver":
+            socketio_control.update_driver(values['driver_uid'])
         elif event in obs_control.actions():
             # Send the event to the background thread
             event_queue.put((event, values))

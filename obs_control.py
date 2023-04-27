@@ -2,7 +2,7 @@ import obsws_python as obs
 import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
 import inspect
 import multiprocessing as mp
-import queue, threading
+import queue, threading, time
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -12,7 +12,7 @@ def debug(text):
     print(f'\033[92m{text}\033[0m')
 
 # Custom theme
-sg.theme("DarkTeal10")
+sg.theme("LightGray1")
 sg.set_options(font=("Helvetica", 16))
 
 class OBSController:
@@ -25,7 +25,20 @@ class OBSController:
         self.password = None
         self.cl = None
         self.connected = False
-        self._read_obs_settings_from_file()
+
+        self.subtitles_queue = queue.Queue()
+        self.subtitles_thread = threading.Thread(target=self.subtitles_process)
+        self.subtitles_thread.start()
+
+    def subtitles_process(self):
+        while True:
+            try:
+                text = self.subtitles_queue.get(timeout=1)
+                self.change_text(self.dialogue_dyn, text)
+                window['subtitles'].update(value=text)
+                time.sleep(5)
+            except queue.Empty:
+                pass
     
     def _write_settings(self, ip, port, password):
         with open('obs_settings.txt', 'w') as f:
@@ -33,34 +46,48 @@ class OBSController:
 
     def _read_obs_settings_from_file(self):
         with open('obs_settings.txt', 'r') as f:
-            ip, port, password = f.read().split(' ')
-            self.connect(ip, port, password)
+            ip, port, password= f.read().split(' ')
+            return self.connect(ip, port, password)
             
     def connect(self, ip, port, password):
         print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
+        connected = False
+        message = ""
+        print("ip", ip, self.ip)
         try:
             self.cl = obs.ReqClient(ip=ip, port=port, password=password)
             self.ip = ip
             self.port = port 
             self.password = password
             self.connected = True
-            return True, "Connected to OBS at " + ip + ":" + port
+            connected, message = True, "Connected to OBS at " + ip + ":" + port
         except ConnectionRefusedError:
-            return False, "Failed to connect to OBS at " + ip + ":" + port 
+            self.ip = ip if not self.ip else self.ip
+            self.port = port if not self.port else self.port
+            self.password = password if not self.password else self.password
+            connected, message = False, "Failed to connect to OBS at " + ip + ":" + port 
 
-    def change_subtitles(self, lines):
+        return connected, message
+
+    def queue_subtitles(self, lines):
         sent = False
+        print("lines", lines)
         if self.connected:
-            n = len(lines)
-            text = "\n".join(lines)
-            text = text.strip()
-            text, too_big = self.split(text)
-            new = self.dialogue_static if too_big else self.dialogue_dyn
-            old = self.dialogue_dyn if too_big else self.dialogue_static
-            self.change_text(new, text)
-            self.change_text(old, "")
-            message = f"Dialogue: {text}"
+            print("connected", self.connected)
+            # text = "\n".join(lines)
+            for line in lines:
+                self.subtitles_queue.put(line)
+
+            # n = len(lines)
+            # text = "\n".join(lines)
+            # text = text.strip()
+            # text, too_big = self.split(text)
+            # new = self.dialogue_static #  if too_big else self.dialogue_dyn
+            # old = self.dialogue_dyn if too_big else self.dialogue_static
+            # self.change_text(old, "")
+            
             sent = True
+            message = "Subtitles sent to OBS"
         else:
             message = "Error: OBS Controller not connected"
         return sent, message
@@ -86,21 +113,14 @@ class OBSController:
         return f"Topic: {new_topic}"
 
     def update_obs_connection(self, ip, port, password):
-        try:
-            global cl
-            cl = obs.ReqClient(ip=ip, port=int(port), password=password)
+        connected, message = self.connect(ip, port, password)
+        if connected:
             self._write_settings(ip, port, password)
-            message = 'Connected to OBS at ' + ip + ':' + port
-        except Exception as e:
-            message = 'Failed to connect to OBS at ' + ip + ':' + port + ' with password ' + password
-            message += e.__str__()
+            
         window['connected'].update(message)
-        return message
+        return connected, message
 
     def change_text(self, name, new_text):
-        if not name:
-            return "Enter a text source. One of: " + " ".join(show_texts())
-
         try:
             settings = self.cl.get_input_settings(name).input_settings
             settings['text'] = new_text
@@ -133,7 +153,7 @@ class Scenes:
             return None
         
 obsc = OBSController()
-obsc._read_obs_settings_from_file()
+connected, obs_connected_init_message = obsc._read_obs_settings_from_file()
 scenes = Scenes(obsc)
 
 def is_text(item):
@@ -158,6 +178,9 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
+# def update_drvier():
+#     uid = window["uid"].get()
+#     return f"New Driver UID: {uid}"
 
 # def toggle_enabled(name, nothing):
 #     enabled = cl.get_scene_item_enabled()
@@ -168,19 +191,21 @@ def cycle_scenes():
 
 
 def send_subtitles(lines):
-    return obsc.change_subtitles(lines)
+    return obsc.queue_subtitles(lines)
 
-
-def change_text(name, new_text):
-    return obsc.change_text(name, new_text)
-
-def connect_to_obs(self):
+def connect_to_obs():
     ip = window['ip'].get()
     port = window['port'].get()
     password = window['password'].get()
     connected, message = obsc.connect(ip, port, password)
     window['connected'].update(message)
     return 'connected', message
+
+# def update_driver(values):
+#     global uid
+#     driver_uid = window['driver_uid'].get()
+#     event_queue.put("update_driver", values)
+#     return 
 
 
 # Automatically generate buttons based on available functions
@@ -189,27 +214,33 @@ not_clickable = ["is_text", "update_output", "debug"]
 available_functions = [(name, func) for name, func in globals().items() if
                        callable(func) and not name.startswith("_") and name not in not_clickable] 
 for name, func in available_functions:
-    function_buttons.append(sg.Button(name, key=name, size=(12, 2), pad=((5, 5), (0, 5))))
+    function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
 
+
+print(obsc.ip)
 layout = [
-    [sg.Text(f"Not connected", key="connected", size=(40, 1)), sg.Button("Connect", key="connect_to_obs")],
-    [sg.Text("IP Address", size=(10, 1)), sg.InputText(obsc.ip, key="ip", size=(30, 1))],
-    [sg.Text("Port", size=(10, 1)), sg.InputText(obsc.port, key="port", size=(30, 1))],
-    [sg.Text("Password", size=(10, 1)), sg.InputText(obsc.password, key="password", size=(30, 1))],
+    [sg.Text(obs_connected_init_message, key="connected"), sg.Button("Connect", key="connect_to_obs")],
+    [sg.Text("IP Address"), sg.InputText(obsc.ip, key="ip")],
+    [sg.Text("Port"), sg.InputText(obsc.port, key="port")],
+    [sg.Text("Password"), sg.InputText(obsc.password, key="password")],
     # timer
-    [sg.Text("Timer", size=(10, 1)), sg.Text("15:00", key="timer", size=(30, 1))],
-    [sg.Text("Status", size=(10, 1)), sg.Multiline(size=(50, 4), key="output", disabled=True)],
-    [sg.Text("Field:", size=(0, 0)), sg.InputText("", key="field", size=(30, 1))],
-    [sg.Text("Value:", size=(0, 0)), sg.Multiline("", key="value", size=(30, 1))],
+    [sg.Text("Timer"), sg.Text("15:00", key="timer")],
+    [sg.Text("Status"), sg.Multiline(key="output", disabled=True)],
+    # [sg.Text("Field:"), sg.InputText("", key="field")],
+    # [sg.Text("Value:"), sg.Multiline("", key="value")],
+    [sg.Text("Subtitles:"), sg.InputText("", key="subtitles")],
+    [sg.Text("Driver:"), sg.InputText("test@test.com", key="driver_uid"), sg.Button("Set Driver", key="update_driver")],
     function_buttons[: len(function_buttons) // 2],
     function_buttons[len(function_buttons) // 2:],
-    [sg.Button("Exit", key="exit", size=(12, 2), pad=((0, 0), (0, 5)))],
+    [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
 ]
 
-window = sg.Window("OBS Control", layout)
+window = sg.Window("BeetleMania OBS Control", layout, resizable=True)
 
 def update_output(window, content):
     if content:
+        if isinstance(content, tuple):
+            content = content[1]
         print("content", str(content))
         window["output"].update(str(content))
 
@@ -220,14 +251,11 @@ def actions():
     return [x[0] for x in available_functions]
 
 def event_loop(window):
-    print('start')
     while True:
         event, values = event_queue.get()
-        print('get', event, values)
-        if event == "stop":
-            break
+        if event == "update_driver":
+            window['driver_uid'].update(values["driver_uid"])
         elif event in actions():
-            print('action', event)
             function = globals()[event]
             num_params = len(inspect.signature(function).parameters)
             if num_params == 2:
@@ -240,6 +268,16 @@ def event_loop(window):
             update_output(window, result)
             # Send the result back to the main thread
             event_queue.put(("update_output", result))
+        elif event == sg.WIN_CLOSED:
+            break
+        elif event == sg.WIN_MAXIMIZED:
+            window.finalize()
+            window.TKroot.resizable(True, True)
+        elif event == sg.WIN_NORMAL:
+            window.finalize()
+            window.TKroot.resizable(False, False)
+        elif event == sg.WIN_FULLSCREEN:
+            window.set_full_screen(True)
 
         # try:
         #     for button, _ in available_functions:

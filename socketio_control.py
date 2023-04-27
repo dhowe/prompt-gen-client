@@ -3,13 +3,13 @@ import obs_control
 
 sio = socketio.Client()
 
-uid = 'test@test.com'
+driver_uid = "test@test.com"
 dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
-global_driver = uid
+global_driver = driver_uid
 
 @sio.event
 def connect():
-    print(f'Connecting to Dashboard... at {dashboard_url}, uid: {uid}')
+    print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
 
 
 @sio.event
@@ -41,29 +41,32 @@ def update_topic(data):
 
 @sio.event
 def update_subtitles(data):
-    updated = False
-    driver, message = authenticate_driver(data)
-    if driver:
+    did_update = False
+    is_driver, message = authenticate_driver(data)
+    if is_driver:
         try:
-            content = data.get("content", [])
-            updated, message = obs_control.send_subtitles(content)
+            messages = data.get("data", [])
+            message_contents = [message.get("content", "") for message in messages]
+            did_update, message = obs_control.send_subtitles(message_contents)
         except Exception as e:
-            message = str(e)
-    sio.emit('text_updated', {'updated': updated, 'message': message, "field": "subtitles"})
+            print(message, e)
+    sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
 
 
-@sio.event
+# @sio.eventcurrently not supporting the dashboard changing the driver
 def update_driver(data):
     # Change the username that has control over the stream.
     # All messages they send to the publish queue
     # will be displayed at the OBS instance
-    driver = data.get("driver", global_driver)
-    print(f'new driver: {driver}')
+    global global_driver
+    global_driver = data if isinstance(data, str) else data.get("driver", global_driver)
+    print(f'new driver: {global_driver}')
 
 
 def authenticate_driver(data):
     is_driver = (data == global_driver) or \
                 isinstance(data, dict) and data.get("author") == global_driver
+    print(data.get("author"), global_driver, is_driver)
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 
@@ -90,5 +93,5 @@ def disconnect():
 def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
-    sio.connect(dashboard_url, auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
+    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.wait()

@@ -1,0 +1,3 @@
+PySimpleGUI
+obsws_python
+socketio
