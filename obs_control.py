@@ -7,9 +7,32 @@ import queue, threading, time
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
 
+
+def read_driver_uid():
+    try:
+        with open(".driver_uid.txt", "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "test@test.com"
+    
+def write_driver_uid(uid):
+    print("writing uid", uid)
+    with open(".driver_uid.txt", "w") as f:
+        f.write(uid)
+
+default_driver = read_driver_uid()
+
 def debug(text):
     # make colorful and styled text
     print(f'\033[92m{text}\033[0m')
+
+
+def split_new_lines(lines):
+    # ["a\nb", "c" "d"] -> ["a", "b", "c" "d"]
+    split = []
+    for line in lines:
+        split += line.split("\n")
+    return split
 
 # Custom theme
 sg.theme("LightGray1")
@@ -20,40 +43,53 @@ class OBSController:
         self.dialogue_dyn = 'Dialogue Dynamic'
         self.dialogue_static = 'Dialogue Normal'
         self.topic = "Topic"
-        self.ip = None
-        self.port = None
-        self.password = None
+        self.ip = "0.0.0.0"
+        self.port = "8888"
+        self.password = "password"
         self.cl = None
         self.connected = False
 
         self.subtitles_queue = queue.Queue()
+        self.words_per_second = 3
+        self.min_delay = 2
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
         self.subtitles_thread.start()
 
+        self.max_line_chars = 60
+
+    def set_subtitle_sleep_time(self, words_per_second):
+        try:
+            self.words_per_second = min(0.1, float(words_per_second))
+            return f"Subtitle delay set to {self.words_per_second}s"
+        except ValueError:
+            return "Unable to set sleep time. Please enter a number."
+        
     def subtitles_process(self):
         while True:
             try:
-                text = self.subtitles_queue.get(timeout=1)
+                text, delay = self.subtitles_queue.get(timeout=1)
                 self.change_text(self.dialogue_dyn, text)
                 window['subtitles'].update(value=text)
-                time.sleep(5)
+                time.sleep(delay)
             except queue.Empty:
                 pass
     
     def _write_settings(self, ip, port, password):
-        with open('obs_settings.txt', 'w') as f:
+        with open('.obs_settings.txt', 'w') as f:
             f.write(f'{ip} {port} {password}')
 
     def _read_obs_settings_from_file(self):
-        with open('obs_settings.txt', 'r') as f:
-            ip, port, password= f.read().split(' ')
-            return self.connect(ip, port, password)
+        try:
+            with open('.obs_settings.txt', 'r') as f:
+                ip, port, password= f.read().split(' ')
+                return self.connect(ip, port, password)
+        except FileNotFoundError:
+            return self.connect(self.ip, self.port, self.password)
             
     def connect(self, ip, port, password):
         print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
         connected = False
         message = ""
-        print("ip", ip, self.ip)
         try:
             self.cl = obs.ReqClient(ip=ip, port=port, password=password)
             self.ip = ip
@@ -61,7 +97,7 @@ class OBSController:
             self.password = password
             self.connected = True
             connected, message = True, "Connected to OBS at " + ip + ":" + port
-        except ConnectionRefusedError:
+        except Exception as e:
             self.ip = ip if not self.ip else self.ip
             self.port = port if not self.port else self.port
             self.password = password if not self.password else self.password
@@ -71,12 +107,15 @@ class OBSController:
 
     def queue_subtitles(self, lines):
         sent = False
-        print("lines", lines)
         if self.connected:
             print("connected", self.connected)
             # text = "\n".join(lines)
-            for line in lines:
-                self.subtitles_queue.put(line)
+            for line in split_new_lines(lines):
+                broken_lines = self.split_long_lines(line)
+                for broken_line in broken_lines:
+                    reading_time = self.get_reading_speed(broken_line)
+                    self.subtitles_queue.put((broken_line, reading_time))
+
 
             # n = len(lines)
             # text = "\n".join(lines)
@@ -91,22 +130,35 @@ class OBSController:
         else:
             message = "Error: OBS Controller not connected"
         return sent, message
+    
+    def get_reading_speed(self, text):
+        return min(self.min_delay, len(" ".split(text)) / self.words_per_second)
 
-    def split(self, text):
+    def split_long_lines(self, text):
+        # Split the into a max character length by word
         words = text.split()
         lines = []
         current_line = ""
 
         for word in words:
-            if len(current_line + " " + word) <= 60:
+            if len(current_line + " " + word) <= self.max_line_chars:
                 current_line += " " + word
             else:
                 lines.append(current_line.strip())
                 current_line = word
-
         lines.append(current_line.strip())
 
-        return "\n".join(lines), len(lines) > 1
+        def iterate_by_two(lines):
+            combined = []
+            for i in range(0, len(lines), 2):
+                if i + 1 < len(lines):
+                    combined.append(lines[i] + "\n" + lines[i+1])
+                else:
+                    combined.append(lines[i])
+            return combined
+        
+        return iterate_by_two(lines)
+
 
     def update_topic(self, new_topic):
         self.change_text(self.topic, new_topic.strip())
@@ -178,12 +230,6 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
-# def update_drvier():
-#     uid = window["uid"].get()
-#     return f"New Driver UID: {uid}"
-
-# def toggle_enabled(name, nothing):
-#     enabled = cl.get_scene_item_enabled()
 
 # Buttons
 def cycle_scenes():
@@ -197,15 +243,10 @@ def connect_to_obs():
     ip = window['ip'].get()
     port = window['port'].get()
     password = window['password'].get()
+    obsc.update_obs_connection(ip, port, password)
     connected, message = obsc.connect(ip, port, password)
     window['connected'].update(message)
     return 'connected', message
-
-# def update_driver(values):
-#     global uid
-#     driver_uid = window['driver_uid'].get()
-#     event_queue.put("update_driver", values)
-#     return 
 
 
 # Automatically generate buttons based on available functions
@@ -217,32 +258,34 @@ for name, func in available_functions:
     function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
 
 
-print(obsc.ip)
+label_size = (22, 1)
+input_size = (40, 2)
+full_size = size=(label_size[0] + input_size[0], label_size[1])
+
 layout = [
-    [sg.Text(obs_connected_init_message, key="connected"), sg.Button("Connect", key="connect_to_obs")],
-    [sg.Text("IP Address"), sg.InputText(obsc.ip, key="ip")],
-    [sg.Text("Port"), sg.InputText(obsc.port, key="port")],
-    [sg.Text("Password"), sg.InputText(obsc.password, key="password")],
-    # timer
-    [sg.Text("Timer"), sg.Text("15:00", key="timer")],
-    [sg.Text("Status"), sg.Multiline(key="output", disabled=True)],
-    # [sg.Text("Field:"), sg.InputText("", key="field")],
-    # [sg.Text("Value:"), sg.Multiline("", key="value")],
-    [sg.Text("Subtitles:"), sg.InputText("", key="subtitles")],
-    [sg.Text("Driver:"), sg.InputText("test@test.com", key="driver_uid"), sg.Button("Set Driver", key="update_driver")],
-    function_buttons[: len(function_buttons) // 2],
-    function_buttons[len(function_buttons) // 2:],
-    [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
+    [sg.Text(obs_connected_init_message, key="connected", size=full_size), sg.Button("Connect", key="connect_to_obs")],
+    [sg.Text("Display User:", size=label_size), sg.InputText(default_driver, key="driver_uid", size=input_size), sg.Button("Set Driver", key="update_driver")],
+    # [sg.Break()],  # Doesn't actually exist
+    [sg.Text("IP Address", size=label_size), sg.InputText(obsc.ip, key="ip", size=input_size)],
+    [sg.Text("Port", size=label_size), sg.InputText(obsc.port, key="port", size=input_size)],
+    [sg.Text("Password", size=label_size), sg.InputText(obsc.password, key="password", size=input_size)],
+    [sg.Text("Timer", size=label_size), sg.Text("15:00", key="timer", size=input_size)],
+    [sg.Text("Reading Speed (words/sec)", size=label_size), sg.InputText(obsc.words_per_second, key="sleep_time", size=input_size), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [sg.Text("Status", size=label_size), sg.Text(key="output", size=input_size)],
+    [sg.Text("", key="subtitles", size=full_size)],
+    # [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
 ]
 
 window = sg.Window("BeetleMania OBS Control", layout, resizable=True)
 
 def update_output(window, content):
+    # Display content in output window
     if content:
         if isinstance(content, tuple):
             content = content[1]
         print("content", str(content))
         window["output"].update(str(content))
+
 
 def secret():
     return obsc.password
@@ -250,12 +293,17 @@ def secret():
 def actions():
     return [x[0] for x in available_functions]
 
+# def update_driver(uid):
+#     result = window['driver_uid'].update(uid)
+    
+#     return result
+
+# update_driver(read_driver_uid())
+
 def event_loop(window):
     while True:
         event, values = event_queue.get()
-        if event == "update_driver":
-            window['driver_uid'].update(values["driver_uid"])
-        elif event in actions():
+        if event in actions():
             function = globals()[event]
             num_params = len(inspect.signature(function).parameters)
             if num_params == 2:
@@ -270,22 +318,3 @@ def event_loop(window):
             event_queue.put(("update_output", result))
         elif event == sg.WIN_CLOSED:
             break
-        elif event == sg.WIN_MAXIMIZED:
-            window.finalize()
-            window.TKroot.resizable(True, True)
-        elif event == sg.WIN_NORMAL:
-            window.finalize()
-            window.TKroot.resizable(False, False)
-        elif event == sg.WIN_FULLSCREEN:
-            window.set_full_screen(True)
-
-        # try:
-        #     for button, _ in available_functions:
-        #         window[button].update(disabled=not connected)
-        # except Exception as e:
-        #     print(e)
-        # except Exception as e:
-        #     # Send the exception back to the main thread
-        #     print('fail', e)
-        #     event_queue.put(("update_output", e))
-        # print('bye')

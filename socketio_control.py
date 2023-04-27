@@ -60,13 +60,13 @@ def update_driver(data):
     # will be displayed at the OBS instance
     global global_driver
     global_driver = data if isinstance(data, str) else data.get("driver", global_driver)
-    print(f'new driver: {global_driver}')
+    message = f'new driver: {global_driver}'
+    return message
 
 
 def authenticate_driver(data):
     is_driver = (data == global_driver) or \
                 isinstance(data, dict) and data.get("author") == global_driver
-    print(data.get("author"), global_driver, is_driver)
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 

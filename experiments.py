@@ -21,6 +21,20 @@
 # def change_text(name, new_text):
 #     return obsc.change_text(name, new_text)
 
+
+# def update_driver(values):
+#     global uid
+#     driver_uid = window['driver_uid'].get()
+#     event_queue.put("update_driver", values)
+#     return 
+
+# def update_drvier():
+#     uid = window["uid"].get()
+#     return f"New Driver UID: {uid}"
+
+# def toggle_enabled(name, nothing):
+#     enabled = cl.get_scene_item_enabled()
+
 def change_text(self, name, new_text):
     if not name:
         return "Enter a text source. One of: " + " ".join(show_texts())
