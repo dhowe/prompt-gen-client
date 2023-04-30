@@ -3,24 +3,12 @@ import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
 import inspect
 import multiprocessing as mp
 import queue, threading, time
+import config
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
 
-
-def read_driver_uid():
-    try:
-        with open(".driver_settings.txt", "r") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "test@test.com"
-    
-def write_driver_uid(uid):
-    print("writing uid", uid)
-    with open(".driver_settings.txt", "w") as f:
-        f.write(uid)
-
-default_driver = read_driver_uid()
+default_driver = config.get_config_value("dashboard_user")
 
 def debug(text):
     # make colorful and styled text
@@ -43,9 +31,9 @@ class OBSController:
         self.dialogue_dyn = 'Dialogue Dynamic'
         self.dialogue_static = 'Dialogue Normal'
         self.topic = "Topic"
-        self.ip = "0.0.0.0"
-        self.port = "8888"
-        self.password = "password"
+        self.ip = config.get_config_value("obs_ip")
+        self.port = config.get_config_value("obs_ip")
+        self.password = config.get_config_value("obs_password")
         self.cl = None
         self.connected = False
 
@@ -59,7 +47,7 @@ class OBSController:
 
     def set_subtitle_sleep_time(self, words_per_second):
         try:
-            self.words_per_second = min(0.1, float(words_per_second))
+            self.words_per_second = min(3000, float(words_per_second))
             return f"Subtitle delay set to {self.words_per_second}s"
         except ValueError:
             return "Unable to set sleep time. Please enter a number."
@@ -75,16 +63,15 @@ class OBSController:
                 pass
     
     def _write_settings(self, ip, port, password):
-        with open('.obs_settings.txt', 'w') as f:
-            f.write(f'{ip} {port} {password}')
+        config.write_config_value("obs_ip", ip)
+        config.write_config_value("obs_port", port)
+        config.write_config_value("obs_password", password)
 
     def _read_obs_settings_from_file(self):
-        try:
-            with open('.obs_settings.txt', 'r') as f:
-                ip, port, password= f.read().split(' ')
-                return self.connect(ip, port, password)
-        except FileNotFoundError:
-            return self.connect(self.ip, self.port, self.password)
+        self.ip = config.get_config_value("obs_ip")
+        self.port = config.get_config_value("obs_port")
+        self.password = config.get_config_value("obs_password")
+        return self.connect(self.ip, self.port, self.password)
             
     def connect(self, ip, port, password):
         print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
@@ -115,15 +102,6 @@ class OBSController:
                 for broken_line in broken_lines:
                     reading_time = self.get_reading_speed(broken_line)
                     self.subtitles_queue.put((broken_line, reading_time))
-
-
-            # n = len(lines)
-            # text = "\n".join(lines)
-            # text = text.strip()
-            # text, too_big = self.split(text)
-            # new = self.dialogue_static #  if too_big else self.dialogue_dyn
-            # old = self.dialogue_dyn if too_big else self.dialogue_static
-            # self.change_text(old, "")
             
             sent = True
             message = "Subtitles sent to OBS"
@@ -181,6 +159,9 @@ class OBSController:
         except:
             msg = f"Failed to change '{name}' to '{new_text}'.\n"
             msg += "Available text sources: " + " ".join(show_texts())
+
+    def change_scene(self, name):
+        pass # TODO
 
 class Scenes:
     def __init__(self, obs_state):
@@ -271,6 +252,12 @@ layout = [
     [sg.Text("Password", size=label_size), sg.InputText(obsc.password, key="password", size=input_size)],
     [sg.Text("Timer", size=label_size), sg.Text("15:00", key="timer", size=input_size)],
     [sg.Text("Reading Speed (words/sec)", size=label_size), sg.InputText(obsc.words_per_second, key="sleep_time", size=input_size), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [
+        sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
+        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
+        sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
+        sg.Button("Play Schedule", key="stream_ending", pad=((5, 5), (0, 5))),
+    ],
     [sg.Text("Status", size=label_size), sg.Text(key="output", size=input_size)],
     [sg.Text("", key="subtitles", size=full_size)],
     # [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
@@ -292,13 +279,6 @@ def secret():
 
 def actions():
     return [x[0] for x in available_functions]
-
-# def update_driver(uid):
-#     result = window['driver_uid'].update(uid)
-    
-#     return result
-
-# update_driver(read_driver_uid())
 
 def event_loop(window):
     while True:

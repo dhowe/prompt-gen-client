@@ -1,6 +1,7 @@
 import obs_control
 import socketio_control
 import threading
+import config
 
 if __name__ == '__main__':
     window = obs_control.window
@@ -22,7 +23,7 @@ if __name__ == '__main__':
             break
         elif event == "update_driver":
             result = socketio_control.update_driver(values['driver_uid'])
-            obs_control.write_driver_uid(values['driver_uid'])
+            config.write_config_value("dashboard_user", values['driver_uid'])
             obs_control.update_output(window, result)
         elif event in obs_control.actions():
             # Send the event to the background thread
