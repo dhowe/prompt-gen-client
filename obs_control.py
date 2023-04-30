@@ -1,5 +1,6 @@
 import obsws_python as obs
 import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
+
 import inspect
 import multiprocessing as mp
 import queue, threading, time
@@ -258,6 +259,7 @@ layout = [
         sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button("Play Schedule", key="stream_ending", pad=((5, 5), (0, 5))),
     ],
+    [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size)],
     [sg.Text("Status", size=label_size), sg.Text(key="output", size=input_size)],
     [sg.Text("", key="subtitles", size=full_size)],
     # [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
@@ -272,6 +274,10 @@ def update_output(window, content):
             content = content[1]
         print("content", str(content))
         window["output"].update(str(content))
+
+def update_next_show(window, content):
+    if content:
+        window["next_show"].update(str(content))
 
 
 def secret():
@@ -296,5 +302,9 @@ def event_loop(window):
             update_output(window, result)
             # Send the result back to the main thread
             event_queue.put(("update_output", result))
+        elif event == "new_show":
+            update_next_show(window, values)
         elif event == sg.WIN_CLOSED:
             break
+
+        print(event, values)
