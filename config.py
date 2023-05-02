@@ -27,4 +27,5 @@ def write_config_value(key_name, value):
     config[key_name] = value
     
     with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f)
+        # json.dump(config, f)
+        json.dump(config, f, indent=4, sort_keys=True)
