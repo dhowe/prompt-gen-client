@@ -6,7 +6,17 @@ import pytz
 from datetime import datetime
 import time
 
-import obs_control
+class ShowScheduleState:
+    def __init__(self) -> None:
+        self.on = False
+        self.upcoming_shows = None
+        self.next_show = None
+
+    def toggle(self):
+        self.on = not self.on
+        return self.on
+    
+schedule = ShowScheduleState()
 
 # https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0
 
@@ -35,6 +45,9 @@ def get_upcoming_shows():
     now = pd.Timestamp.now(tz=TIMEZONE).to_datetime64()
     upcoming_shows = all_shows_df[all_shows_df['datetime'] > now].sort_values('datetime')
 
+    if upcoming_shows.empty:
+        return None
+    
     # Add a 'local_datetime' field for each show
     upcoming_shows['local_datetime'] = upcoming_shows.apply(localize_show_datetime, axis=1)
 
@@ -56,10 +69,8 @@ def localize_show_datetime(row):
 
     return show_dt_tz
 
-def get_next_show():
-    upcoming_shows = get_upcoming_shows()
-
-    if upcoming_shows is None or upcoming_shows.empty:
+def get_next_show(upcoming_shows):
+    if upcoming_shows is None:
         return None
 
     try:
@@ -77,10 +88,15 @@ def check_for_shows(event_queue):
 
     while True:
         try:
-            next_show = get_next_show()
+            upcoming_shows = get_upcoming_shows()
+            next_show = get_next_show(upcoming_shows)
             if (next_show and not prev_next_show) or \
                 (prev_next_show and next_show and prev_next_show['datetime'] != next_show['datetime']):
                 event_queue.put(("new_show", next_show))
+
+                schedule.upcoming_shows = upcoming_shows
+                schedule.next_show = next_show
+
             prev_next_show = next_show
             
         except Exception as e:
@@ -89,4 +105,6 @@ def check_for_shows(event_queue):
         time.sleep(5)
 
 if __name__ == "__main__":
-    print(get_next_show())
+    upcoming_shows = get_upcoming_shows()
+    next_show = get_next_show(upcoming_shows)
+    print(next_show)

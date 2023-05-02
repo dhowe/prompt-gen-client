@@ -1,14 +1,10 @@
 import socketio
 import obs_control
-import config
 
 sio = socketio.Client()
 
-# driver_uid = "test@test.com"
-secret =  obs_control.secret()
-driver_uid = config.get_config_value("dashboard_user")
-secret = config.get_config_value("dasboard_password")
-dashboard_url = config.get_config_value("dashboard_url") #'ws://localhost:5050'
+driver_uid = "test@test.com"
+dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
 global_driver = driver_uid
 
 @sio.event
@@ -56,7 +52,7 @@ def update_subtitles(data):
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
 
-
+ 
 # @sio.eventcurrently not supporting the dashboard changing the driver
 def update_driver(data):
     # Change the username that has control over the stream.
@@ -73,6 +69,12 @@ def authenticate_driver(data):
                 isinstance(data, dict) and data.get("author") == global_driver
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
+
+def start_show(show_name):
+    pass
+    
+def stop_show():
+    pass
 
 @sio.event
 def update_obs(data):
@@ -97,5 +99,5 @@ def disconnect():
 def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
-    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': secret}, wait_timeout=1)
+    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.wait()
