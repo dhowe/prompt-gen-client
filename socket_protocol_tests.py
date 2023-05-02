@@ -9,14 +9,14 @@ driver_uid = 'test@test.com'  # "adept-dev@tenderclaws.com"
 dashboard_url = 'ws://localhost:5000'
 
 
-@socket_io.on('remote_load_scene')
-def remote_load_scene(data):
-    print(f'got /remote_load_scene')
+@socket_io.event
+def on_scene_loaded(data):  # this one is pending
+    print(f'got /on_load_scene')
 
 
-@socket_io.on('remote_end_scene')
-def remote_load_scene(data):
-    print(f'got /remote_end_scene')
+@socket_io.event
+def on_scene_complete(data):
+    print(f'got /on_end_scene')
 
 
 @socket_io.event
@@ -46,5 +46,4 @@ if __name__ == "__main__":
             print('message:end_scene sent');
             time.sleep(5)
             socket_io.disconnect()
-
     exit(0)
