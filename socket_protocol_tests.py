@@ -21,7 +21,7 @@ def remote_load_scene(data):
 
 @socket_io.event
 def connect():
-    print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
+    print(f'Connect: dashboard.url={dashboard_url} uid={driver_uid}')
 
 
 @socket_io.event
@@ -40,10 +40,10 @@ if __name__ == "__main__":
             # scene_json = json.load(f)
             scene_json = file2.read()
             socket_io.emit('load_scene', {'scene_json': scene_json})
-            print('load_scene sent');
+            print('message:load_scene sent');
             time.sleep(5)
             socket_io.emit('end_scene')
-            print('end_scene sent');
+            print('message:end_scene sent');
             time.sleep(5)
             socket_io.disconnect()
 
