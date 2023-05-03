@@ -20,7 +20,8 @@ while True:
     event, values = window.read(timeout=100)
 
     if event != "__TIMEOUT__":
-        print('event', event, values)
+        # print('event', event, values)
+        pass
     if event == obs_control.sg.WIN_CLOSED:
         break
     elif event == "update_driver":
@@ -31,6 +32,9 @@ while True:
         obs_control.update_output(window, result)
         listen_thread = threading.Thread(target=dashboard_socket.listen)
         listen_thread.start()
+    elif event == "update_sheet":
+        config.write_config_value("google_sheet_show_sheet_name", values["sheet"])
+        shows.do_show_check_and_generate_event(event_queue)
     elif event == "set_sleep_time":
         result = obs_control.obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
         obs_control.update_output(window, result)
@@ -46,6 +50,7 @@ while True:
         else:
             message = "No shows scheduled."
         obs_control.update_output(window, message)
+
 
         # event_queue.put(("")) # change GUI TOOD
     elif event in obs_control.actions():

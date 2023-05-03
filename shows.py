@@ -32,6 +32,11 @@ class ShowScheduleState:
             self.end_schedule()
         return self.on
     
+    def set_next_show(self, next_show, upcoming_shows=None):
+        self.next_show = next_show
+        if not upcoming_shows.empty and not upcoming_shows is None:
+            self.upcoming_shows = upcoming_shows
+    
     def add_countdown_action(self, name, advance_time, action):
         self.countdown_actions[name] = (advance_time, action)
     
@@ -77,11 +82,7 @@ class ShowScheduleState:
 
             time.sleep(1)
 
-
-
-
 schedule = ShowScheduleState()
-
 
 def get_all_shows():
     sheet_id = config.get_config_value("google_sheet_show_id")
@@ -144,31 +145,36 @@ def get_next_show(upcoming_shows):
         return next_show.to_dict()
     except (KeyError, ValueError):
         return None
-
-
+    
+def do_show_check():
+    prev_next_show = None
+    try:
+        upcoming_shows = get_upcoming_shows()
+        next_show = get_next_show(upcoming_shows)
+        if (next_show and not prev_next_show) or \
+            (prev_next_show and next_show and prev_next_show['datetime'] != next_show['datetime']):
+            result = (next_show, upcoming_shows)
+        prev_next_show = next_show
+        return result, None
+    except Exception as e:
+        return None, e
+    
+def do_show_check_and_generate_event(event_queue):
+    result, error = do_show_check()
+    if result:
+        next_show, upcoming_shows = result
+        schedule.set_next_show(next_show, upcoming_shows)
+        event_queue.put(("new_show", next_show))
+    elif error:
+        event_queue.put(("new_show", "Error retrieving show: " + str(error)))
+    
 def check_for_shows(event_queue):
     """
     Function to run in a separate thread to check for upcoming shows
     """
-    prev_next_show = None
-
     while True:
-        try:
-            upcoming_shows = get_upcoming_shows()
-            next_show = get_next_show(upcoming_shows)
-            if (next_show and not prev_next_show) or \
-                (prev_next_show and next_show and prev_next_show['datetime'] != next_show['datetime']):
-                event_queue.put(("new_show", next_show))
-
-                schedule.upcoming_shows = upcoming_shows
-                schedule.next_show = next_show
-
-            prev_next_show = next_show
-            
-        except Exception as e:
-            event_queue.put(("new_show", "Error retrieving show: " + str(e)))
-
-        time.sleep(5)
+        do_show_check_and_generate_event(event_queue)
+        time.sleep(8)
 
 if __name__ == "__main__":
     print("all_shows", get_all_shows())

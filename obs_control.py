@@ -11,6 +11,7 @@ event_queue = queue.Queue()
 
 default_driver = config.get_config_value("dashboard_user")
 default_driver_pass = config.get_config_value("dashboard_password", "")
+default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Shows")
 
 def debug(text):
     # make colorful and styled text
@@ -258,20 +259,18 @@ def connect_to_obs_stream():
     stream_ip       = window['stream_ip'].get()
     stream_port     = window['stream_port'].get()
     stream_password = window['stream_password'].get()
-    obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
-    connected, message1 = obsc_stream.connect(stream_ip, stream_port, stream_password)
-    window['stream_connected'].update(message1)
-    return 'connected', message1
+    connected, message = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+    window['stream_connected'].update(message)
+    return 'connected', message
 
 def connect_to_obs_background():
     window['background_connected'].update("Connecting...")
     background_ip       = window['background_ip'].get()
     backgorund_port     = window['background_port'].get()
     backgorund_password = window['background_password'].get()
-    obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
-    connected, message2 = obsc_background.connect(background_ip, backgorund_port, backgorund_password)
-    window['background_connected'].update(message2)
-    return 'connected', message2
+    connected, message = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
+    window['background_connected'].update(message)
+    return 'connected', message
 
 
 # Automatically generate buttons based on available functions
@@ -323,9 +322,10 @@ layout = [
         sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), 
         sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), 
         sg.InputText(default_driver_pass, key="driver_password",size=input_size, expand_x=True, password_char="*"), 
-        sg.Button("Set Driver", key="update_driver")],
-    
+        sg.Button("Set Driver", key="update_driver")
+    ],
     [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [sg.Text("Sheet Name", size=full_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
     [
         sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
@@ -351,12 +351,15 @@ def update_output(window, content):
         window["output"].update(str(content))
 
 def update_next_show(show):
-    if show:
-        print(show)
+    if show and isinstance(show, str):
+        content = show
+    elif show:
+        print("SHOW", show)
         content = show.get("Name", "Name mising") + " starting at "
         content += show.get("Date", "Date missing") + " "
         content += show.get("Time", "Time missing") + " "
-        window["next_show"].update(content)
+
+    window["next_show"].update(content)
 
 def secret():
     return obsc_stream.password
@@ -381,7 +384,7 @@ def event_loop(window):
             # Send the result back to the main thread
             event_queue.put(("update_output", result))
         elif event == "new_show":
-            # update_next_show(window, values)
+            update_next_show(values)
             pass
         elif event == sg.WIN_CLOSED:
             break
