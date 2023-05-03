@@ -106,16 +106,6 @@ def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': driver_password}, wait_timeout=1)
-
-    with open('test_scene.json', "r") as file2:
-        # scene_json = json.load(f)
-        scene_json = file2.read()
-
-        sio.emit('load_scene', {'scene_json': scene_json})
-        print('message:load_scene sent')
-
-
-    print(driver_uid, driver_password)
     connected = f'Connected to Dashboard: {sio.connected}'
     print(connected)
     sio.wait()
