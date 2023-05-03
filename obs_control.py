@@ -78,7 +78,7 @@ class OBSController:
     def connect(self, ip, port, password):
         print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
         try:
-            self.cl = obs.ReqClient(ip=ip, port=port, password=password)
+            self.cl = obs.ReqClient(host=ip, port=port, password=password)
             self.ip = ip
             self.port = port 
             self.password = password
