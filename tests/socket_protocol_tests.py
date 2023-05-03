@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # attempt to connect
     socket_io.connect(dashboard_url, auth={
         'uid': driver_uid,
-        'secret': 'test'  # config['dashboard_password']
+        'secret': config['dashboard_password']
     }, wait_timeout=1)
 
     # check that we're connected
