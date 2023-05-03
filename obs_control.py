@@ -350,9 +350,13 @@ def update_output(window, content):
         print("content", str(content))
         window["output"].update(str(content))
 
-def update_next_show(content):
-    if content:
-        window["next_show"].update(str(content))
+def update_next_show(show):
+    if show:
+        print(show)
+        content = show.get("Name", "Name mising") + " starting at "
+        content += show.get("Date", "Date missing") + " "
+        content += show.get("Time", "Time missing") + " "
+        window["next_show"].update(content)
 
 def secret():
     return obsc_stream.password
