@@ -1,8 +1,9 @@
-socketio
-
-PySimpleGUI
-pandas
-pytz
-gspread
-obsws_python
-pyinstaller
+google_api_python_client==2.86.0
+gspread==5.8.0
+obsws_python==1.4.2
+pandas==1.4.4
+protobuf==4.22.3
+PySimpleGUI==4.60.4
+PySimpleGUI==4.60.4
+python-socketio==5.8.0
+pytz==2022.2.1
