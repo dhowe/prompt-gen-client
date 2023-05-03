@@ -10,6 +10,7 @@ import config
 event_queue = queue.Queue()
 
 default_driver = config.get_config_value("dashboard_user")
+default_driver_pass = config.get_config_value("dashboard_password", "")
 
 def debug(text):
     # make colorful and styled text
@@ -26,13 +27,13 @@ def split_new_lines(lines):
 
 class OBSController:
     def __init__(self, name) -> None:
-        self.dialogue_text_field = "Dialogue Dynamic"
+        self.dialogue_text_field = config.get_config_value("subtitle_layer_name", "Subtitle Layer")
         self.topic               = "Topic"
-        self.name = name
-        self.ip = None
-        self.port = None
-        self.password = None
-        self.message = None
+        self.name                = name
+        self.ip                  = None
+        self.port                = None
+        self.password            = None
+        self.message             = None
         self._read_obs_settings_from_file(connect=False)
 
         self.cl = None
@@ -190,8 +191,6 @@ class Scenes:
 obsc_stream = OBSController("stream")
 obsc_background =  OBSController("background")
 
-# stream_connected = obsc_stream._read_obs_settings_from_file(connect=False)
-# background_connected = obsc_background._read_obs_settings_from_file(connect=False)
 scenes = Scenes(obsc_stream)
 
 
@@ -320,8 +319,12 @@ layout = [
             ],
         ], expand_x=True),
     ],
-    [sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), sg.Button("Set Driver", key="update_driver")],
-    [sg.Text("Showtime in", size=label_size, expand_x=True), sg.Text("", key="timer", size=input_size, expand_x=True)],
+    [
+        sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), 
+        sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), 
+        sg.InputText(default_driver_pass, key="driver_password",size=input_size, expand_x=True, password_char="*"), 
+        sg.Button("Set Driver", key="update_driver")],
+    
     [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
     [
         sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
@@ -329,6 +332,7 @@ layout = [
         sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
+    [sg.Text("Showtime in", size=label_size, expand_x=True), sg.Text("", key="timer", size=input_size, expand_x=True)],
     [sg.Text("Next Show", size=label_size, expand_x=True), sg.Text(key="next_show", size=input_size, expand_x=True)],
     [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=input_size, expand_x=True)],
     [sg.Text("", key="subtitles", size=full_size)],

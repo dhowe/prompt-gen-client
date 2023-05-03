@@ -21,6 +21,21 @@
 # def change_text(name, new_text):
 #     return obsc.change_text(name, new_text)
 
+# @sio.event
+# def update_obs(data):
+#     connected = False
+#     try:
+#         message = obs_control.update_obs_connection(
+#             data.get("ip"),
+#             data.get("port"),
+#             data.get("password")
+#         )
+#         connected = True
+#     except Exception as e:
+#         message = str(e)
+
+#     sio.emit('obs_connected', {'connected': connected, 'message': message})
+
 
 # def update_driver(values):
 #     global uid

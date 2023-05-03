@@ -5,8 +5,13 @@ import pytz
 from datetime import datetime
 import time, threading
 import obs_control
+import drive_files
 
 TIMEZONE = config.get_config_value("timezone")
+
+class Show:
+    def __init__(self, filepath):
+        self.json = drive_files.get_json_data(filepath)
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -57,6 +62,11 @@ class ShowScheduleState:
             if countdown is None:
                 return
             countdown -= pd.Timedelta(seconds=1)
+
+            # check if it is less than a second until the next show
+            if countdown <= pd.Timedelta(seconds=1):
+                pass
+
             if (i % 60) == 0:
                 countdown = self.get_time_until_next_show()
             obs_control.update_timer(countdown)
@@ -68,7 +78,10 @@ class ShowScheduleState:
             time.sleep(1)
 
 
+
+
 schedule = ShowScheduleState()
+
 
 def get_all_shows():
     sheet_id = config.get_config_value("google_sheet_show_id")
@@ -84,22 +97,23 @@ def get_all_shows():
     except (KeyError, ValueError):
         return None
     
+
 def get_upcoming_shows():
     all_shows_df = get_all_shows()
 
     if all_shows_df is None or all_shows_df.empty:
         return None
 
-    now = pd.Timestamp.now(tz=TIMEZONE).to_datetime64()
-    upcoming_shows = all_shows_df[all_shows_df['datetime'] > now].sort_values('datetime')
+    now = pd.Timestamp.now(tz=TIMEZONE)
 
+    # Add a 'local_datetime' field for each show
+    all_shows_df['local_datetime'] = all_shows_df.apply(localize_show_datetime, axis=1)
+    upcoming_shows = all_shows_df[all_shows_df['local_datetime'] > now].sort_values('local_datetime')
     if upcoming_shows.empty:
         return None
     
-    # Add a 'local_datetime' field for each show
-    upcoming_shows['local_datetime'] = upcoming_shows.apply(localize_show_datetime, axis=1)
-
     return upcoming_shows
+
 
 def localize_show_datetime(row):
     timezone = row['Timezone']
@@ -111,13 +125,12 @@ def localize_show_datetime(row):
             show_tz = TIMEZONE
     else:
         show_tz = TIMEZONE
-
     show_dt = row['datetime']
-    show_dt_tz = pytz.utc.localize(show_dt.to_pydatetime()).astimezone(show_tz)
-
-    print(type(show_dt_tz))
+    # encode the datetime, which is already in show_tz as a time aware datetime
+    show_dt_tz = show_tz.localize(show_dt)
 
     return show_dt_tz
+
 
 def get_next_show(upcoming_shows):
     if upcoming_shows is None:

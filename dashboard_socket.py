@@ -1,11 +1,14 @@
 import socketio
 import obs_control
+import config
 
 sio = socketio.Client()
 
-driver_uid = "test@test.com"
-dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
-global_driver = driver_uid
+driver_uid = config.get_config_value("dashboard_user")
+driver_password = config.get_config_value("dasboard_password")
+dashboard_url = config.get_config_value("dashboard_url")
+# dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
+
 
 @sio.event
 def connect():
@@ -25,11 +28,19 @@ def on_generate(data):
 
 @sio.event
 def on_scene_loaded(data):  # this one is pending
-    print(f'got /on_load_scene')
+    print(f'got /on_scene_loaded')
 
 @sio.event
 def on_scene_complete(data):
-    print(f'got /on_end_scene')
+    print(f'got /on_scene_complete')
+
+
+def is_driver(data):
+    # helper function to check if the currently assigned driver is the one
+    # the message comes from
+    is_driver = (data == driver_uid) or \
+                isinstance(data, dict) and data.get("author") == driver_uid
+    return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 
 @sio.event
@@ -50,8 +61,8 @@ def update_topic(data):
 @sio.event
 def update_subtitles(data):
     did_update = False
-    is_driver, message = is_driver(data)
-    if is_driver:
+    driver, message = is_driver(data)
+    if driver:
         try:
             messages = data.get("data", [])
             message_contents = [message.get("content", "") for message in messages]
@@ -61,39 +72,16 @@ def update_subtitles(data):
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
 
 
-# @sio.event
-# def update_obs(data):
-#     connected = False
-#     try:
-#         message = obs_control.update_obs_connection(
-#             data.get("ip"),
-#             data.get("port"),
-#             data.get("password")
-#         )
-#         connected = True
-#     except Exception as e:
-#         message = str(e)
-
-#     sio.emit('obs_connected', {'connected': connected, 'message': message})
-
  
-# @sio.eventcurrently not supporting the dashboard changing the driver
-def update_driver(data):
+def update_driver(driver, password):
     # Change the username that has control over the stream.
     # All messages they send to the publish queue
     # will be displayed at the OBS instance
-    global global_driver
-    global_driver = data if isinstance(data, str) else data.get("driver", global_driver)
-    message = f'new driver: {global_driver}'
+    global driver_uid, driver_password
+    driver_uid = driver
+    driver_password = password
+    message = f"new driver: {driver_uid} and password {''.join(['*' for _ in driver_password])}"
     return message
-
-
-def is_driver(data):
-    # helper function to check if the currently assigned driver is the one
-    # the message comes from
-    is_driver = (data == global_driver) or \
-                isinstance(data, dict) and data.get("author") == global_driver
-    return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 # Events we emit
 def start_show(scene_json):
@@ -104,13 +92,30 @@ def stop_show():
     if sio.connected:
         sio.emit('end_scene')
 
-
 @sio.event
 def disconnect():
     print('...disconnected')
 
+def manual_disconnect():
+    try:
+        sio.disconnect()
+    except Exception as e:
+        print("Disconnected")
+
 def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
-    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': obs_control.secret()}, wait_timeout=1)
+    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': driver_password}, wait_timeout=1)
+
+    with open('test_scene.json', "r") as file2:
+        # scene_json = json.load(f)
+        scene_json = file2.read()
+
+        sio.emit('load_scene', {'scene_json': scene_json})
+        print('message:load_scene sent')
+
+
+    print(driver_uid, driver_password)
+    connected = f'Connected to Dashboard: {sio.connected}'
+    print(connected)
     sio.wait()

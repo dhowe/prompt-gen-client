@@ -6,7 +6,8 @@ import socketio
 socket_io = socketio.Client()
 
 driver_uid = 'test@test.com'  # "adept-dev@tenderclaws.com"
-dashboard_url = 'ws://localhost:5000'
+# dashboard_url = 'ws://localhost:5000'
+dashboard_url = "ws://192.241.209.27:5050"
 
 
 @socket_io.event
@@ -30,7 +31,7 @@ def disconnect():
 
 
 if __name__ == "__main__":
-    with open('obs_config.json', "r") as file1:
+    with open('../config.json', "r") as file1:
         config = json.load(file1)
         socket_io.connect(dashboard_url, auth={
             'uid': driver_uid,

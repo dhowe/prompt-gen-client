@@ -10,5 +10,6 @@
     "stream_obs_ip": "192.168.0.1",
     "stream_obs_password": "password",
     "stream_obs_port": "8888",
+    "subtitle_layer_name": "Subtitle Layer",
     "timezone": "America/Los_Angeles"
 }

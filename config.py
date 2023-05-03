@@ -2,7 +2,7 @@ import json
 
 CONFIG_FILE = "config.json"
 
-def get_config_value(key_name):
+def get_config_value(key_name, default=None):
     """
     Takes the name of a key in the CONFIG_FILE and returns its value.
 
@@ -15,7 +15,7 @@ def get_config_value(key_name):
             config = json.load(f)
             return config[key_name]
     except (FileNotFoundError, KeyError):
-        return None
+        return default
 
 def write_config_value(key_name, value):
     """
