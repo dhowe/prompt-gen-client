@@ -1,10 +1,11 @@
-import datetime
 import gspread
 import pandas as pd
 import config
 import pytz
 from datetime import datetime
 import time
+
+TIMEZONE = config.get_config_value("timezone")
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -16,11 +17,22 @@ class ShowScheduleState:
         self.on = not self.on
         return self.on
     
+    def time_until_next_show(self):
+        if self.next_show is None:
+            return None
+        now = pd.Timestamp.now(tz=TIMEZONE)
+        return self.next_show['local_datetime'] - now
+    
+    # def start_timer(self):
+    #     while True:
+    #         time_until_next_show = self.time_until_next_show()
+    #         if time_until_next_show is None:
+    #             return
+    #         time.sleep(1)
+    #         time_until_next_show -= pd.Timedelta(seconds=1)
+
+    
 schedule = ShowScheduleState()
-
-# https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0
-
-TIMEZONE = config.get_config_value("timezone")
 
 def get_all_shows():
     sheet_id = config.get_config_value("google_sheet_show_id")
@@ -67,6 +79,8 @@ def localize_show_datetime(row):
     show_dt = row['datetime']
     show_dt_tz = pytz.utc.localize(show_dt.to_pydatetime()).astimezone(show_tz)
 
+    print(type(show_dt_tz))
+
     return show_dt_tz
 
 def get_next_show(upcoming_shows):
@@ -84,6 +98,9 @@ def get_next_show(upcoming_shows):
 
 
 def check_for_shows(event_queue):
+    """
+    Function to run in a separate thread to check for upcoming shows
+    """
     prev_next_show = None
 
     while True:
@@ -105,6 +122,8 @@ def check_for_shows(event_queue):
         time.sleep(5)
 
 if __name__ == "__main__":
+    print("all_shows", get_all_shows())
     upcoming_shows = get_upcoming_shows()
+    print("upcoming_shows", upcoming_shows)
     next_show = get_next_show(upcoming_shows)
     print(next_show)

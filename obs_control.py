@@ -28,13 +28,16 @@ sg.theme("LightGray1")
 sg.set_options(font=("Helvetica", 16))
 
 class OBSController:
-    def __init__(self) -> None:
-        self.dialogue_dyn = 'Dialogue Dynamic'
-        self.dialogue_static = 'Dialogue Normal'
-        self.topic = "Topic"
-        self.ip = config.get_config_value("obs_ip")
-        self.port = config.get_config_value("obs_ip")
-        self.password = config.get_config_value("obs_password")
+    def __init__(self, name) -> None:
+        self.dialogue_text_field = "Dialogue Dynamic"
+        self.topic               = "Topic"
+        self.name = name
+        self.ip = None
+        self.port = None
+        self.password = None
+        self.message = None
+        self._read_obs_settings_from_file()
+
         self.cl = None
         self.connected = False
 
@@ -57,41 +60,39 @@ class OBSController:
         while True:
             try:
                 text, delay = self.subtitles_queue.get(timeout=1)
-                self.change_text(self.dialogue_dyn, text)
+                self.change_text(self.dialogue_text_field, text)
                 window['subtitles'].update(value=text)
                 time.sleep(delay)
             except queue.Empty:
                 pass
     
     def _write_settings(self, ip, port, password):
-        config.write_config_value("obs_ip", ip)
-        config.write_config_value("obs_port", port)
-        config.write_config_value("obs_password", password)
+        config.write_config_value(f"{self.name}_obs_ip", ip)
+        config.write_config_value(f"{self.name}_obs_port", port)
+        config.write_config_value(f"{self.name}_obs_password", password)
 
     def _read_obs_settings_from_file(self):
-        self.ip = config.get_config_value("obs_ip")
-        self.port = config.get_config_value("obs_port")
-        self.password = config.get_config_value("obs_password")
-        return self.connect(self.ip, self.port, self.password)
+        self.ip         = config.get_config_value(f"{self.name}_obs_ip")
+        self.port       = config.get_config_value(f"{self.name}_obs_port")
+        self.password   = config.get_config_value(f"{self.name}_obs_password")
+        connected, self.message = self.connect(self.ip, self.port, self.password)
+        return connected
             
     def connect(self, ip, port, password):
         print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
-        connected = False
-        message = ""
         try:
             self.cl = obs.ReqClient(ip=ip, port=port, password=password)
             self.ip = ip
             self.port = port 
             self.password = password
-            self.connected = True
-            connected, message = True, "Connected to OBS at " + ip + ":" + port
+            self.connected, self.message = True, "Connected to OBS at " + ip + ":" + port
         except Exception as e:
             self.ip = ip if not self.ip else self.ip
             self.port = port if not self.port else self.port
             self.password = password if not self.password else self.password
-            connected, message = False, "Failed to connect to OBS at " + ip + ":" + port 
-
-        return connected, message
+            self.connected, self.message = False, "Failed to connect to OBS at " + ip + ":" + port 
+        print(self.message)
+        return self.connected, self.message
 
     def queue_subtitles(self, lines):
         sent = False
@@ -148,7 +149,7 @@ class OBSController:
         if connected:
             self._write_settings(ip, port, password)
             
-        window['connected'].update(message)
+        window[f"{self.name}_connected"].update(message)
         return connected, message
 
     def change_text(self, name, new_text):
@@ -163,6 +164,7 @@ class OBSController:
 
     def change_scene(self, name):
         pass # TODO
+
 
 class Scenes:
     def __init__(self, obs_state):
@@ -186,27 +188,35 @@ class Scenes:
         else:
             return None
         
-obsc = OBSController()
-connected, obs_connected_init_message = obsc._read_obs_settings_from_file()
-scenes = Scenes(obsc)
+obsc_stream = OBSController("stream")
+obsc_background =  OBSController("background")
+
+stream_connected = obsc_stream._read_obs_settings_from_file()
+background_connected = obsc_background._read_obs_settings_from_file()
+scenes = Scenes(obsc_stream)
+
+
 
 def is_text(item):
     return 'text' in item['inputKind']
 
+def update_timer(time_until_show):
+    window['timer'].update(time_until_show)
+
 
 def show_items():
-    cur_scene = obsc.cl.get_current_program_scene().current_program_scene_name
-    items = obsc.cl.get_scene_item_list(cur_scene).scene_items
+    cur_scene = obsc_stream.cl.get_current_program_scene().current_program_scene_name
+    items = obsc_stream.cl.get_scene_item_list(cur_scene).scene_items
     return items
 
 
 def show_inputs():
-    inputs = obsc.cl.get_input_list().inputs
+    inputs = obsc_stream.cl.get_input_list().inputs
     return inputs
 
 
 def show_texts():
-    inputs = obsc.cl.get_input_list().inputs
+    inputs = obsc_stream.cl.get_input_list().inputs
     print(inputs)
     texts = [i for i in inputs if 'text' in i['inputKind']]
     texts = [source['inputName'] for source in texts]
@@ -219,16 +229,24 @@ def cycle_scenes():
 
 
 def send_subtitles(lines):
-    return obsc.queue_subtitles(lines)
+    return obsc_stream.queue_subtitles(lines)
 
 def connect_to_obs():
-    ip = window['ip'].get()
-    port = window['port'].get()
-    password = window['password'].get()
-    obsc.update_obs_connection(ip, port, password)
-    connected, message = obsc.connect(ip, port, password)
-    window['connected'].update(message)
-    return 'connected', message
+    stream_ip       = window['stream_ip'].get()
+    stream_port     = window['stream_port'].get()
+    stream_password = window['stream_password'].get()
+    obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+    connected, message1 = obsc_stream.connect(stream_ip, stream_port, stream_password)
+    window['stream_connected'].update(message1)
+
+    ip       = window['background_ip'].get()
+    port     = window['background_port'].get()
+    password = window['background_password'].get()
+    obsc_background.update_obs_connection(ip, port, password)
+    connected, message2 = obsc_background.connect(ip, port, password)
+    window['background_connected'].update(message2)
+
+    return 'connected', message1 + "\n" + message2
 
 
 # Automatically generate buttons based on available functions
@@ -244,28 +262,41 @@ label_size = (22, 1)
 input_size = (40, 2)
 full_size = size=(label_size[0] + input_size[0], label_size[1])
 
+start_message, stop_message = "Start Schedule", "Stop Schedule"
+
 layout = [
-    [sg.Text(obs_connected_init_message, key="connected", size=full_size), sg.Button("Connect", key="connect_to_obs")],
-    [sg.Text("Display User:", size=label_size), sg.InputText(default_driver, key="driver_uid", size=input_size), sg.Button("Set Driver", key="update_driver")],
-    # [sg.Break()],  # Doesn't actually exist
-    [sg.Text("IP Address", size=label_size), sg.InputText(obsc.ip, key="ip", size=input_size)],
-    [sg.Text("Port", size=label_size), sg.InputText(obsc.port, key="port", size=input_size)],
-    [sg.Text("Password", size=label_size), sg.InputText(obsc.password, key="password", size=input_size)],
-    [sg.Text("Timer", size=label_size), sg.Text("15:00", key="timer", size=input_size)],
-    [sg.Text("Reading Speed (words/sec)", size=label_size), sg.InputText(obsc.words_per_second, key="sleep_time", size=input_size), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [
+        sg.Text(obsc_stream.message, key="stream_connected", size=input_size), 
+        sg.Text(obsc_background.message, key="background_connected", size=input_size), 
+        sg.Button("Connect", key="connect_to_obs")
+    ],
+    [sg.Text("Driver (Subtitle Display)", size=label_size), sg.InputText(default_driver, key="driver_uid", size=input_size), sg.Button("Set Driver", key="update_driver")],
+
+    [sg.Text("Stream", size=label_size)],
+    [sg.Text("IP Address", size=label_size), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size)],
+    [sg.Text("Port", size=label_size), sg.InputText(obsc_stream.port, key="stream_port", size=input_size)],
+    [sg.Text("Password", size=label_size), sg.InputText(obsc_stream.password, key="stream_password", size=input_size)],
+    
+    [sg.Text("Background", size=label_size)],
+    [sg.Text("IP Address", size=label_size), sg.InputText(obsc_background.ip, key="background_ip", size=input_size)],
+    [sg.Text("Port", size=label_size), sg.InputText(obsc_background.port, key="background_port", size=input_size)],
+    [sg.Text("Password", size=label_size), sg.InputText(obsc_background.password, key="background_password", size=input_size)],
+    
+    [sg.Text("Timer until show", size=label_size), sg.Text("15:00", key="timer", size=input_size)],
+    [sg.Text("Reading Speed (words/sec)", size=label_size), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size), sg.Button("Set subtitles delay", key="set_sleep_time")],
     [
         sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
         sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
-        sg.Button("Start Schedule", key="start_stop_shedule", pad=((5, 5), (0, 5))),
+        sg.Button(start_message, key="start_stop_shedule", pad=((5, 5), (0, 5))),
     ],
     [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size)],
     [sg.Text("Status", size=label_size), sg.Text(key="output", size=input_size)],
     [sg.Text("", key="subtitles", size=full_size)],
-    # [sg.Button("Exit", key="exit", pad=((0, 0), (0, 5)))],
+    function_buttons
 ]
 
-window = sg.Window("BeetleMania OBS Control", layout, resizable=True)
+window = sg.Window("BeetleChat Stream", layout, resizable=True)
 
 def update_output(window, content):
     # Display content in output window
@@ -280,7 +311,7 @@ def update_next_show(window, content):
         window["next_show"].update(str(content))
 
 def secret():
-    return obsc.password
+    return obsc_stream.password
 
 def actions():
     return [x[0] for x in available_functions]
@@ -302,9 +333,16 @@ def event_loop(window):
             # Send the result back to the main thread
             event_queue.put(("update_output", result))
         elif event == "new_show":
-            update_next_show(window, values)
-        elif event == "toggle_schedule":
+            # update_next_show(window, values)
             pass
+        elif event == "countdown":
+            pass # TODO
+        elif event == "schedule_on":
+            pass
+            # window['start_stop_schedule'].update(stop_message)
+        elif event == "schedule_off":
+            pass
+            # window['start_stop_schedule'].update(start_message)
         elif event == sg.WIN_CLOSED:
             break
 

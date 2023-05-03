@@ -1,0 +1,14 @@
+{
+    "background_obs_ip": "10.211.55.3",
+    "background_obs_password": "DpXfxAaniqco3XXF",
+    "background_obs_port": "8888",
+    "dashboard_password": "DpXfxAaniqco3XXF",
+    "dashboard_url": "ws://192.241.209.27:5050",
+    "dashboard_user": "alex.calderwood@tenderclaws.com",
+    "google_sheet_show_id": "1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc",
+    "google_sheet_show_sheet_name": "Shows",
+    "stream_obs_ip": "10.211.55.3",
+    "stream_obs_password": "DpXfxAaniqco3XXF",
+    "stream_obs_port": "8888",
+    "timezone": "America/Los_Angeles"
+}

@@ -23,11 +23,19 @@ def on_generate(data):
     print('/generated: ', data)
     # sio.emit('my response', {'response': 'my response'})
 
+@sio.event
+def on_scene_loaded(data):  # this one is pending
+    print(f'got /on_load_scene')
+
+@sio.event
+def on_scene_complete(data):
+    print(f'got /on_end_scene')
+
 
 @sio.event
 def update_topic(data):
     updated = False
-    driver, message = authenticate_driver(data)
+    driver, message = is_driver(data)
     field = "topic"
     if driver:
         try:
@@ -42,7 +50,7 @@ def update_topic(data):
 @sio.event
 def update_subtitles(data):
     did_update = False
-    is_driver, message = authenticate_driver(data)
+    is_driver, message = is_driver(data)
     if is_driver:
         try:
             messages = data.get("data", [])
@@ -51,6 +59,22 @@ def update_subtitles(data):
         except Exception as e:
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
+
+
+# @sio.event
+# def update_obs(data):
+#     connected = False
+#     try:
+#         message = obs_control.update_obs_connection(
+#             data.get("ip"),
+#             data.get("port"),
+#             data.get("password")
+#         )
+#         connected = True
+#     except Exception as e:
+#         message = str(e)
+
+#     sio.emit('obs_connected', {'connected': connected, 'message': message})
 
  
 # @sio.eventcurrently not supporting the dashboard changing the driver
@@ -64,32 +88,21 @@ def update_driver(data):
     return message
 
 
-def authenticate_driver(data):
+def is_driver(data):
+    # helper function to check if the currently assigned driver is the one
+    # the message comes from
     is_driver = (data == global_driver) or \
                 isinstance(data, dict) and data.get("author") == global_driver
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
-
-def start_show(show_name):
-    pass
+# Events we emit
+def start_show(scene_json):
+    if sio.connected:
+        sio.emit('load_scene', {'scene_json': scene_json})
     
 def stop_show():
-    pass
-
-@sio.event
-def update_obs(data):
-    connected = False
-    try:
-        message = obs_control.update_obs_connection(
-            data.get("ip"),
-            data.get("port"),
-            data.get("password")
-        )
-        connected = True
-    except Exception as e:
-        message = str(e)
-
-    sio.emit('obs_connected', {'connected': connected, 'message': message})
+    if sio.connected:
+        sio.emit('end_scene')
 
 
 @sio.event
