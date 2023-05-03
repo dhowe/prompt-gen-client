@@ -23,9 +23,6 @@ def split_new_lines(lines):
         split += line.split("\n")
     return split
 
-# Custom theme
-sg.theme("LightGray1")
-sg.set_options(font=("Helvetica", 16))
 
 class OBSController:
     def __init__(self, name) -> None:
@@ -200,8 +197,32 @@ scenes = Scenes(obsc_stream)
 def is_text(item):
     return 'text' in item['inputKind']
 
-def update_timer(time_until_show):
-    window['timer'].update(time_until_show)
+def update_timer(time_until_show):    
+    if not time_until_show:
+        window['timer'].update("")
+        return
+
+    try:
+        days, remainder = divmod(time_until_show.seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        # Create the timer string
+        timer_str = ''
+        if time_until_show.days > 0:
+            timer_str += f'{time_until_show.days} day'
+            if time_until_show.days > 1:
+                timer_str += 's'
+            timer_str += ' '
+        if hours > 0:
+            timer_str += f'{hours:02d}:'
+        if minutes > 0:
+            timer_str += f'{minutes:02d}:'
+        timer_str += f'{seconds:02d}'
+    except Exception as e:
+        timer_str = str(time_until_show)
+        print(e)
+    window['timer'].update(timer_str)
 
 
 def show_items():
@@ -258,6 +279,14 @@ for name, func in available_functions:
     function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
 
 
+sg.theme("LightGray1")
+sg.set_options(font=("Helvetica", 16))
+try:
+    sg.set_options(font=("Kailasa", 16))
+except:
+    pass
+
+small_label = (10, 1)
 label_size = (22, 1)
 input_size = (40, 2)
 full_size = size=(label_size[0] + input_size[0], label_size[1])
@@ -266,37 +295,41 @@ start_message, stop_message = "Start Schedule", "Stop Schedule"
 
 layout = [
     [
-        sg.Text(obsc_stream.message, key="stream_connected", size=input_size), 
-        sg.Text(obsc_background.message, key="background_connected", size=input_size), 
-        sg.Button("Connect", key="connect_to_obs")
+        sg.Frame("OBS Instances", [
+            [
+                sg.Column([
+                    [sg.Text("Stream", size=small_label, expand_x=True)],
+                    [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size, expand_x=True)],
+                    [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_stream.port, key="stream_port", size=input_size, expand_x=True)],
+                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_stream.password, key="stream_password", size=input_size, expand_x=True)]
+                ], pad=((0, 20), 0)),
+                sg.Column([
+                    [sg.Text("Background", size=small_label, expand_x=True)],
+                    [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_background.ip, key="background_ip", size=input_size, expand_x=True)],
+                    [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_background.port, key="background_port", size=input_size, expand_x=True)],
+                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_background.password, key="background_password", size=input_size, expand_x=True)]
+                ], pad=((20, 0), 0)),
+            ],
+            [sg.Text("", key="stream_connected", expand_x=True), sg.Button("Connect", key="connect_to_obs", pad=((5, 5), (20, 5))), sg.Text("", key="background_connected", expand_x=True)]
+        ], expand_x=True),
     ],
-    [sg.Text("Driver (Subtitle Display)", size=label_size), sg.InputText(default_driver, key="driver_uid", size=input_size), sg.Button("Set Driver", key="update_driver")],
-
-    [sg.Text("Stream", size=label_size)],
-    [sg.Text("IP Address", size=label_size), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size)],
-    [sg.Text("Port", size=label_size), sg.InputText(obsc_stream.port, key="stream_port", size=input_size)],
-    [sg.Text("Password", size=label_size), sg.InputText(obsc_stream.password, key="stream_password", size=input_size)],
-    
-    [sg.Text("Background", size=label_size)],
-    [sg.Text("IP Address", size=label_size), sg.InputText(obsc_background.ip, key="background_ip", size=input_size)],
-    [sg.Text("Port", size=label_size), sg.InputText(obsc_background.port, key="background_port", size=input_size)],
-    [sg.Text("Password", size=label_size), sg.InputText(obsc_background.password, key="background_password", size=input_size)],
-    
-    [sg.Text("Timer until show", size=label_size), sg.Text("15:00", key="timer", size=input_size)],
-    [sg.Text("Reading Speed (words/sec)", size=label_size), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), sg.Button("Set Driver", key="update_driver")],
+    [sg.Text("Showtime in", size=label_size, expand_x=True), sg.Text("", key="timer", size=input_size, expand_x=True)],
+    [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
     [
         sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
         sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
-        sg.Button(start_message, key="start_stop_shedule", pad=((5, 5), (0, 5))),
+        sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
-    [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size)],
-    [sg.Text("Status", size=label_size), sg.Text(key="output", size=input_size)],
+    [sg.Text("Next Show", size=label_size, expand_x=True), sg.Text(key="next_show", size=input_size, expand_x=True)],
+    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=input_size, expand_x=True)],
     [sg.Text("", key="subtitles", size=full_size)],
-    function_buttons
+    # function_buttons
 ]
 
 window = sg.Window("BeetleChat Stream", layout, resizable=True)
+
 
 def update_output(window, content):
     # Display content in output window
@@ -306,7 +339,7 @@ def update_output(window, content):
         print("content", str(content))
         window["output"].update(str(content))
 
-def update_next_show(window, content):
+def update_next_show(content):
     if content:
         window["next_show"].update(str(content))
 
@@ -335,14 +368,6 @@ def event_loop(window):
         elif event == "new_show":
             # update_next_show(window, values)
             pass
-        elif event == "countdown":
-            pass # TODO
-        elif event == "schedule_on":
-            pass
-            # window['start_stop_schedule'].update(stop_message)
-        elif event == "schedule_off":
-            pass
-            # window['start_stop_schedule'].update(start_message)
         elif event == sg.WIN_CLOSED:
             break
 

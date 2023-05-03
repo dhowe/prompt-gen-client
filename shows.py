@@ -3,7 +3,8 @@ import pandas as pd
 import config
 import pytz
 from datetime import datetime
-import time
+import time, threading
+import obs_control
 
 TIMEZONE = config.get_config_value("timezone")
 
@@ -13,25 +14,60 @@ class ShowScheduleState:
         self.upcoming_shows = None
         self.next_show = None
 
+        self.timer_thread = None
+        self._time_until_next_show = None
+
+        self.countdown_actions = {}
+
     def toggle(self):
         self.on = not self.on
+        if self.on:
+            self.begin_schedule()
+        else:
+            self.end_schedule()
         return self.on
     
-    def time_until_next_show(self):
+    def add_countdown_action(self, name, advance_time, action):
+        self.countdown_actions[name] = (advance_time, action)
+    
+    def remove_countdown_action(self, name):
+        del self.countdown_actions[name]
+    
+    def get_time_until_next_show(self):
         if self.next_show is None:
             return None
         now = pd.Timestamp.now(tz=TIMEZONE)
-        return self.next_show['local_datetime'] - now
+        self._time_until_next_show = self.next_show['local_datetime'] - now
+        return self._time_until_next_show
     
-    # def start_timer(self):
-    #     while True:
-    #         time_until_next_show = self.time_until_next_show()
-    #         if time_until_next_show is None:
-    #             return
-    #         time.sleep(1)
-    #         time_until_next_show -= pd.Timedelta(seconds=1)
+    def begin_schedule(self):
+        self.timer_thread = threading.Thread(target=self.start_timer)
+        self.timer_thread.start()
 
-    
+    def end_schedule(self):
+        # terminate timer thread
+        self.timer_thread.join()
+        obs_control.update_timer(None)
+
+    def start_timer(self):
+        countdown = self.get_time_until_next_show()
+        obs_control.update_next_show(self.next_show)
+        i = 0
+        while self.on:
+            if countdown is None:
+                return
+            countdown -= pd.Timedelta(seconds=1)
+            if (i % 60) == 0:
+                countdown = self.get_time_until_next_show()
+            obs_control.update_timer(countdown)
+
+            for name, (advance_time, action) in self.countdown_actions.items():
+                if countdown <= advance_time:
+                    action()
+
+            time.sleep(1)
+
+
 schedule = ShowScheduleState()
 
 def get_all_shows():

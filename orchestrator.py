@@ -31,17 +31,14 @@ while True:
     elif event == "set_sleep_time":
         result = obs_control.obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
         obs_control.update_output(window, result)
-    elif event == "start_stop_shedule":
+    elif event == "start_stop_schedule":
         on = schedule.toggle()
         if on and schedule.next_show:
-            obs_control.update_timer(schedule.time_until_next_show())
-            event_queue.put(("schedule_on", None))
-            # result = dashboard_socket.start_show(schedule.next_show['JSON'])
+            window['start_stop_schedule'].update(text=obs_control.stop_message, button_color='red')
         else:
-            event_queue.put(("schedule_on", None))
-            # result = dashboard_socket.stop_show()
-        start_stop = 'start' if on else 'stop'
-        obs_control.update_output(window, f"{start_stop}ed schedule. Next show: {schedule.next_show}")
+            window['start_stop_schedule'].update(text=obs_control.start_message, button_color=obs_control.sg.theme_button_color())
+        obs_control.update_output(window, f"{'start' if on else 'stop'}ed schedule. Next show: {schedule.next_show}")
+
         # event_queue.put(("")) # change GUI TOOD
     elif event in obs_control.actions():
         event_queue.put((event, values))
