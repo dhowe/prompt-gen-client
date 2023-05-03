@@ -29,8 +29,9 @@ def on_scene_complete(data):
 
 
 @socket_io.event
-def on_publish(data):
-    print(f'got /on_publish', data)
+def on_publish(payload):
+    content = payload['data'][0]['content']
+    print(f'got /on_publish "{content[0:80]}..."')
 
 
 @socket_io.event
@@ -67,9 +68,9 @@ if __name__ == "__main__":
         raise Exception(f'/connect failed with status={responses["on_connect"]}')
 
     # load json scene file
-    scene_json = open(os.path.dirname(__file__) + '/test_scene.json').read()
+    scene_json = open(os.path.dirname(__file__) + '/../test_scene.json').read()
     socket_io.emit('load_scene', {'scene_json': scene_json})
-    print('message:load_scene sent')
+    print('sent /load_scene')
 
     # verify we've load scene file
     time.sleep(1)
@@ -81,7 +82,7 @@ if __name__ == "__main__":
 
     # end the scene
     socket_io.emit('end_scene')
-    print('message:end_scene sent')
+    print('sent /end_scene')
 
     # verify the scene is ended
     time.sleep(1)
@@ -89,5 +90,6 @@ if __name__ == "__main__":
         socket_io.disconnect()
         raise Exception('/end_scene not recieved ')
 
-# socket_io.disconnect()
-# exit(0)
+time.sleep(5)
+socket_io.disconnect()
+exit(0)
