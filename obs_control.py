@@ -33,7 +33,7 @@ class OBSController:
         self.port = None
         self.password = None
         self.message = None
-        self._read_obs_settings_from_file()
+        self._read_obs_settings_from_file(connect=False)
 
         self.cl = None
         self.connected = False
@@ -68,15 +68,17 @@ class OBSController:
         config.write_config_value(f"{self.name}_obs_port", port)
         config.write_config_value(f"{self.name}_obs_password", password)
 
-    def _read_obs_settings_from_file(self):
+    def _read_obs_settings_from_file(self, connect=True):
         self.ip         = config.get_config_value(f"{self.name}_obs_ip")
         self.port       = config.get_config_value(f"{self.name}_obs_port")
         self.password   = config.get_config_value(f"{self.name}_obs_password")
-        connected, self.message = self.connect(self.ip, self.port, self.password)
-        return connected
+        if connect:
+            connected, self.message = self.connect(self.ip, self.port, self.password)
+            return connected
+        return False
             
     def connect(self, ip, port, password):
-        print("Connecting to OBS... at ip:", ip, "port:", port, "password:", password)
+        print("Connecting to OBS... at host:", ip, "port:", port, "password:", password)
         try:
             self.cl = obs.ReqClient(host=ip, port=port, password=password)
             self.ip = ip
@@ -188,8 +190,8 @@ class Scenes:
 obsc_stream = OBSController("stream")
 obsc_background =  OBSController("background")
 
-stream_connected = obsc_stream._read_obs_settings_from_file()
-background_connected = obsc_background._read_obs_settings_from_file()
+# stream_connected = obsc_stream._read_obs_settings_from_file(connect=False)
+# background_connected = obsc_background._read_obs_settings_from_file(connect=False)
 scenes = Scenes(obsc_stream)
 
 
@@ -252,22 +254,25 @@ def cycle_scenes():
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)
 
-def connect_to_obs():
+def connect_to_obs_stream():
+    window['stream_connected'].update("Connecting...")
     stream_ip       = window['stream_ip'].get()
     stream_port     = window['stream_port'].get()
     stream_password = window['stream_password'].get()
     obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
     connected, message1 = obsc_stream.connect(stream_ip, stream_port, stream_password)
     window['stream_connected'].update(message1)
+    return 'connected', message1
 
-    ip       = window['background_ip'].get()
-    port     = window['background_port'].get()
-    password = window['background_password'].get()
-    obsc_background.update_obs_connection(ip, port, password)
-    connected, message2 = obsc_background.connect(ip, port, password)
+def connect_to_obs_background():
+    window['background_connected'].update("Connecting...")
+    background_ip       = window['background_ip'].get()
+    backgorund_port     = window['background_port'].get()
+    backgorund_password = window['background_password'].get()
+    obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
+    connected, message2 = obsc_background.connect(background_ip, backgorund_port, backgorund_password)
     window['background_connected'].update(message2)
-
-    return 'connected', message1 + "\n" + message2
+    return 'connected', message2
 
 
 # Automatically generate buttons based on available functions
@@ -287,6 +292,7 @@ except:
     pass
 
 small_label = (10, 1)
+small2_label = (22, 1)
 label_size = (22, 1)
 input_size = (40, 2)
 full_size = size=(label_size[0] + input_size[0], label_size[1])
@@ -301,16 +307,17 @@ layout = [
                     [sg.Text("Stream", size=small_label, expand_x=True)],
                     [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size, expand_x=True)],
                     [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_stream.port, key="stream_port", size=input_size, expand_x=True)],
-                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_stream.password, key="stream_password", size=input_size, expand_x=True)]
+                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_stream.password, key="stream_password", size=input_size, expand_x=True)],
+                    [sg.Text("", key="stream_connected", expand_x=True), sg.Button("Connect Stream", key="connect_to_obs_stream", pad=((5, 5), (20, 5)))],
                 ], pad=((0, 20), 0)),
                 sg.Column([
                     [sg.Text("Background", size=small_label, expand_x=True)],
                     [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_background.ip, key="background_ip", size=input_size, expand_x=True)],
                     [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_background.port, key="background_port", size=input_size, expand_x=True)],
-                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_background.password, key="background_password", size=input_size, expand_x=True)]
+                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_background.password, key="background_password", size=input_size, expand_x=True)],
+                    [sg.Text("", key="background_connected", expand_x=True), sg.Button("Connect Background", key="connect_to_obs_background", pad=((5, 5), (20, 5)))],
                 ], pad=((20, 0), 0)),
             ],
-            [sg.Text("", key="stream_connected", expand_x=True), sg.Button("Connect", key="connect_to_obs", pad=((5, 5), (20, 5))), sg.Text("", key="background_connected", expand_x=True)]
         ], expand_x=True),
     ],
     [sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), sg.Button("Set Driver", key="update_driver")],
