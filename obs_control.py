@@ -6,6 +6,7 @@ import multiprocessing as mp
 import queue, threading, time
 import config
 import numpy as np
+from random import randint
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -45,7 +46,8 @@ class OBSController:
         self.words_per_second = 3
         self.min_delay = 4
         self.default_reading_time = max(self.min_delay, 20 / self.words_per_second)
-        self.last_message_extra_time = max(self.min_delay, 8)
+        self.max_rand = 5
+        self.last_message_extra_time = (1, 3)
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
         self.subtitles_thread.start()
 
@@ -53,10 +55,18 @@ class OBSController:
 
     def set_subtitle_sleep_time(self, words_per_second):
         try:
-            self.words_per_second = min(3000, float(words_per_second))
-            return f"Subtitle delay set to {self.words_per_second}s"
+            self.words_per_second = float(words_per_second)
+            return f"Reading speed set to {self.words_per_second} words per second."
         except ValueError:
             return "Unable to set sleep time. Please enter a number."
+        
+    def set_subtitle_max_rand_delay(self, max_rand):
+        try:
+            self.words_per_second = float(max_rand)
+            return f"Maximum random range set to {self.words_per_second} seconds."
+        except ValueError:
+            return "Unable to set sleep time. Please enter a number."
+
         
     def subtitles_process(self):
         while True:
@@ -110,7 +120,8 @@ class OBSController:
                     self.subtitles_queue.put((broken_line, reading_time))
             
             # Hold the last one a bit longer
-            self.subtitles_queue.put((broken_line, self.last_message_extra_time))
+            last = randint(self.last_message_extra_time[0], self.last_message_extra_time[1])
+            self.subtitles_queue.put((broken_line, last))
             # Timeout the very last subtitle at the end
             self.subtitles_queue.put(("\n\n", self.default_reading_time))
             
@@ -125,7 +136,8 @@ class OBSController:
         speed = words / self.words_per_second
         final = max(self.min_delay, speed)
         # get a gaussian distribution around the speed
-        extra = min(abs(np.random.normal(0, speed * 2)), speed * 4)
+        extra = randint(0, self.max_rand)
+        
         return final + extra
 
     def split_long_lines(self, text):
@@ -338,6 +350,7 @@ layout = [
         sg.Button("Set Driver", key="update_driver")
     ],
     [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
+    [sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.max_rand, key="max_rand", size=input_size, expand_x=True), sg.Button("Set max delay randomness", key="set_rand_delay")],
     [sg.Text("Sheet Name", size=full_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
     [
         sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),

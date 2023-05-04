@@ -38,6 +38,9 @@ while True:
     elif event == "set_sleep_time":
         result = obs_control.obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
         obs_control.update_output(window, result)
+    elif event == "set_rand_delay":
+        result = obs_control.obsc_stream.set_subtitle_max_rand_delay(values["max_rand"])
+        obs_control.update_output(window, result)
     elif event == "start_stop_schedule":
         on = schedule.toggle()
         if on and schedule.next_show:

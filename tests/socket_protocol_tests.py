@@ -6,8 +6,9 @@ import socketio
 
 socket_io = socketio.Client()
 
-driver_uid = 'test@test.com'  # "adept-dev@tenderclaws.com"
-dashboard_url = 'ws://localhost:5000'  # 'ws://192.241.209.27:5050/' #
+driver_uid = "alex.calderwood@tenderclaws.com"
+# 'test@test.com'  # "adept-dev@tenderclaws.com"
+dashboard_url =  'ws://192.241.209.27:5050/' #
 
 responses = {
     'load_scene_recieved': False,
