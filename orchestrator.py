@@ -15,7 +15,7 @@ show_thread = threading.Thread(target=shows.check_for_shows, args=(event_queue,)
 gui_thread.start()
 show_thread.start()
 
-# Main event loop
+# Main event loop for listening to GUI events
 while True:
     event, values = window.read(timeout=100)
 
@@ -29,7 +29,7 @@ while True:
         result = dashboard_socket.update_driver(values['driver_uid'], values['driver_password'])
         config.write_config_value("dashboard_user", values['driver_uid'])
         config.write_config_value("dashboard_password", values['driver_password'])
-        obs_control.update_output(window, result)
+        obs_control.message(result)
         listen_thread = threading.Thread(target=dashboard_socket.listen)
         listen_thread.start()
     elif event == "update_sheet":
@@ -37,10 +37,13 @@ while True:
         shows.do_show_check_and_generate_event(event_queue)
     elif event == "set_sleep_time":
         result = obs_control.obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
-        obs_control.update_output(window, result)
+        obs_control.message(result)
     elif event == "set_rand_delay":
         result = obs_control.obsc_stream.set_subtitle_max_rand_delay(values["max_rand"])
-        obs_control.update_output(window, result)
+        obs_control.message(result)
+    elif event == "set_blank_hold":
+        result = obs_control.obsc_stream.set_subtitle_blank_hold(values["blank_hold"])
+        obs_control.message(result)
     elif event == "start_stop_schedule":
         on = schedule.toggle()
         if on and schedule.next_show:
@@ -52,7 +55,7 @@ while True:
             message = f"{'Start' if on else 'Stopp'}ing schedule. Next show: {schedule.next_show}"
         else:
             message = "No shows scheduled."
-        obs_control.update_output(window, message)
+        obs_control.message(message)
         # event_queue.put(("")) # change GUI TOOD
     elif event == obs_control.dashboard_event:
         obs_control.dashboard_action()

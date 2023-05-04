@@ -6,12 +6,46 @@ from datetime import datetime
 import time, threading
 import obs_control
 import drive_files
+from dashboard_socket import start_show, responses
 
 TIMEZONE = config.get_config_value("timezone")
 
 class Show:
-    def __init__(self, filepath):
-        self.json = drive_files.get_json_data(filepath)
+    def __init__(self, data):
+        self.data = data
+        self.link = data['Link']
+        self.json, message = drive_files.get_json_data(self.link)
+
+        if not self.json:
+            obs_control.message(message + f" for {self.link}")
+
+        self.started = False
+
+    def __repr__(self):
+        content = self.data.get("Name", "Name mising") + " starting at "
+        content += self.data.get("Date", "Date missing") + " "
+        content += self.data.get("Time", "Time missing") + " "
+
+        return content
+
+    def start(self):
+        if self.json:
+            print("Starting")
+            count = responses['load_scene_recieved']
+            start_show(self.json)
+            self.started = True
+            time.sleep(1)
+            if responses['load_scene_recieved'] > count:
+                message = f"Started {self.data['Name']}"
+            else:
+                message = f"Failed to start {self.data['Name']}"
+        else:
+            message = "No json found for", self.link
+        
+        print(message)
+        obs_control.message(message)
+
+        
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -47,7 +81,7 @@ class ShowScheduleState:
         if self.next_show is None:
             return None
         now = pd.Timestamp.now(tz=TIMEZONE)
-        self._time_until_next_show = self.next_show['local_datetime'] - now
+        self._time_until_next_show = self.next_show.data['local_datetime'] - now
         return self._time_until_next_show
     
     def begin_schedule(self):
@@ -70,7 +104,7 @@ class ShowScheduleState:
 
             # check if it is less than a second until the next show
             if countdown <= pd.Timedelta(seconds=1):
-                pass
+                self.next_show.start()
 
             if (i % 60) == 0:
                 countdown = self.get_time_until_next_show()
@@ -136,18 +170,15 @@ def localize_show_datetime(row):
 def get_next_show(upcoming_shows):
     if upcoming_shows is None:
         return None
-
     try:
-        # Get the next show
         next_show = upcoming_shows.iloc[0]
-
-        # Return the entire row as a dictionary
-        return next_show.to_dict()
+        return Show(next_show.to_dict())
     except (KeyError, ValueError):
         return None
     
 def do_show_check():
     prev_next_show = None
+    result = None
     try:
         upcoming_shows = get_upcoming_shows()
         next_show = get_next_show(upcoming_shows)

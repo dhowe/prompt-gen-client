@@ -11,7 +11,7 @@ dashboard_url = config.get_config_value("dashboard_url")
 # dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
 
 responses = {
-    'load_scene_recieved': False,
+    'load_scene_recieved': 0,
     'end_scene_recieved': False,
     'on_connect': '',
 }
@@ -27,10 +27,10 @@ def on_connect(data):
     responses['on_connect'] = data['status']
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
-        obs_control.update_output_better("Failed to connect to Dashboard: "+ responses['on_connect'])
+        obs_control.message("Failed to connect to Dashboard: "+ responses['on_connect'])
         obs_control.update_driver(False)
     else:
-        obs_control.update_output_better("Connected to Dashboard")
+        obs_control.message("Connected to Dashboard")
         obs_control.update_driver(True)
         print(f"Connected to Dashboard", responses['on_connect'])
 
@@ -49,6 +49,7 @@ def on_generate(data):
 @sio.event
 def on_scene_loaded(data):  # this one is pending
     print(f'got /on_scene_loaded')
+    responses['load_scene_recieved'] += 1
 
 @sio.event
 def on_scene_complete(data):
@@ -91,6 +92,9 @@ def update_subtitles(data):
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
 
+@sio.event
+def disconnect():
+    print('...disconnected')
 
  
 def update_driver(driver, password):
@@ -112,9 +116,6 @@ def stop_show():
     if sio.connected:
         sio.emit('end_scene')
 
-@sio.event
-def disconnect():
-    print('...disconnected')
 
 def manual_disconnect():
     try:

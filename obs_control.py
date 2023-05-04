@@ -53,6 +53,7 @@ class OBSController:
         self.default_words_per_second = 3
         self.words_per_second = self.default_words_per_second
         self.min_delay = 4
+        self.blank_hold = 0
         self.max_rand = 5
         self.default_word_count = 20
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
@@ -74,7 +75,13 @@ class OBSController:
         except ValueError:
             return "Unable to set sleep time. Please enter a number."
 
-        
+    def set_subtitle_blank_hold(self, blank_hold):
+        try:
+            self.blank_hold = float(blank_hold)
+            return f"Blank hold time set to {self.blank_hold} seconds."
+        except ValueError:
+            return "Unable to set random range time. Please enter a number."
+
     def subtitles_process(self):
         while True:
             try:
@@ -133,7 +140,7 @@ class OBSController:
             # self.subtitles_queue.put((broken_line, last_extra_word_proxy))
 
             # Timeout the very last subtitle at the end
-            self.subtitles_queue.put(("\n\n", self.default_word_count))
+            self.subtitles_queue.put(("\n\n", self.blank_hold))
             
             sent = True
             message = "Subtitles sent to OBS"
@@ -388,6 +395,12 @@ layout = [
         sg.Button("Set max delay", key="set_rand_delay")
     ],
     [
+        sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), 
+        sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=small_label, expand_x=True), 
+        sg.Button("Set between message hold", key="set_blank_hold")
+        
+    ],
+    [
         sg.Text("Sheet Name", size=label_size), 
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True), 
         sg.Button("Set Sheet", key="update_sheet"),
@@ -414,18 +427,11 @@ def update_output(window, content):
         print("content", str(content))
         window["output"].update(str(content))
 
-def update_output_better(content):
+def message(content):
     update_output(window, content)
 
 def update_next_show(show):
-    if show and isinstance(show, str):
-        content = show
-    elif show:
-        content = show.get("Name", "Name mising") + " starting at "
-        content += show.get("Date", "Date missing") + " "
-        content += show.get("Time", "Time missing") + " "
-
-    window["next_show"].update(content)
+    window["next_show"].update(show)
 
 def update_driver(connected):
     message = "Driver" if connected else "Driver (Not Connected)"

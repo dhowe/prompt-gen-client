@@ -29,7 +29,7 @@ def get_json_data(filename):
         file_id = get_file_id_from_url(filename)
     except Exception as e:
         print(e)
-        return None, "Unable to retrieve file. Make sure the URL is correct and shared with the service account."
+        return None, "Unable to retrieve Scene JSON."
 
     print(file_id)
     try:
@@ -50,7 +50,7 @@ def get_json_data(filename):
     except Exception as e:
         message = e
 
-    message = f"Successfully downloaded file: {file_name}"
+    message = f"Successfully downloaded"
     return content, message
 
 # https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=sharing
