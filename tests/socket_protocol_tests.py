@@ -34,14 +34,14 @@ def on_publish(payload):
     print(f'got /on_publish "{content[0:80]}..."')
 
 
-@socket_io.event
-def connect():
-    print(f'Connecting... dashboard.url={dashboard_url} uid={driver_uid}')
+# @socket_io.event
+# def connect():
+#     print(f'Connecting... dashboard.url={dashboard_url} uid={driver_uid}')
 
 
 @socket_io.event
 def on_connect(data):
-    # print(f'got /on_connect status={data["status"]}')
+    print(f'got /on_connect status={data["status"]}')
     responses['on_connect'] = data['status']
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
