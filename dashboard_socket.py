@@ -21,17 +21,32 @@ def connect():
     print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
 
 
+# @sio.event
+# def on_connect(data):
+#     # print(f'got /on_connect status={data["status"]}')
+#     responses['on_connect'] = data['status']
+#     if data['status'] != 'connected':
+#         responses['on_connect'] = data['error']
+#         print(f"Failed to connect to Dashboard: {responses['on_connect']}")
+#         obs_control.update_output_better("Failed to connect to Dashboard", responses['on_connect'])
+#     else:
+#         print(f"Connected to Dashboard", responses['on_connect'])
+#         obs_control.update_output_better("Connected to Dashboard")
+
+
 @sio.event
 def on_connect(data):
-    # print(f'got /on_connect status={data["status"]}')
+    print(f'got /on_connect status={data["status"]}')
     responses['on_connect'] = data['status']
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
-        print(f"Failed to connect to Dashboard: {responses['on_connect']}")
-        obs_control.update_output_better("Failed to connect to Dashboard", responses['on_connect'])
+        obs_control.update_output_better("Failed to connect to Dashboard: "+ responses['on_connect'])
     else:
-        print(f"Connected to Dashboard", responses['on_connect'])
         obs_control.update_output_better("Connected to Dashboard")
+        print(f"Connected to Dashboard", responses['on_connect'])
+
+        
+
 
 
 @sio.event
@@ -122,15 +137,18 @@ def manual_disconnect():
         print("Disconnected")
 
 def listen():
-    # DH: added some auth here
-    # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
-    sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': driver_password}, wait_timeout=1)
+    # attempt to connect
+    sio.connect(dashboard_url, auth={
+        'uid': driver_uid,
+        'secret': driver_password,
+    }, wait_timeout=1)
+    
     
     # check that we're connected
     time.sleep(1)
-    # if responses['on_connect'] != 'connected':
-    #     sio.disconnect()
-    #     connected = f'Connected to Dashboard: {sio.connected}'
+    if responses['on_connect'] != 'connected':
+        sio.disconnect()
+        raise Exception(f'/connect failed with status={responses["on_connect"]}')
 
     sio.wait()
 

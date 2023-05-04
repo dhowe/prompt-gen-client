@@ -126,7 +126,6 @@ class OBSController:
         final = max(self.min_delay, speed)
         # get a gaussian distribution around the speed
         extra = min(abs(np.random.normal(0, speed * 2)), speed * 4)
-        # print(final, extra, final+extra)
         return final + extra
 
     def split_long_lines(self, text):
