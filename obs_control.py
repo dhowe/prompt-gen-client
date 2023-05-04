@@ -338,7 +338,7 @@ small2_label = (22, 1)
 label_size = (22, 1)
 input_size = (40, 2)
 full_size = size =(label_size[0] + input_size[0], label_size[1])
-biggest_size = (50, 3)
+biggest_size = (45, 3)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
@@ -378,10 +378,19 @@ layout = [
             ],
         ], expand_x=True),
     ],
-    [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set reading speed", key="set_sleep_time")],
-    [sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.max_rand, key="max_rand", size=input_size, expand_x=True), sg.Button("Set max delay", key="set_rand_delay")],
-    [sg.Text("Sheet Name", size=label_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
+    [sg.Text('')],
     [
+        sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), 
+        sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=small_label, expand_x=True), 
+        sg.Button("Set reading speed", key="set_sleep_time"),
+        sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), 
+        sg.InputText(obsc_stream.max_rand, key="max_rand", size=small_label, expand_x=True), 
+        sg.Button("Set max delay", key="set_rand_delay")
+    ],
+    [
+        sg.Text("Sheet Name", size=label_size), 
+        sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True), 
+        sg.Button("Set Sheet", key="update_sheet"),
         # sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
         # sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
         # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
