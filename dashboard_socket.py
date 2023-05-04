@@ -21,19 +21,6 @@ def connect():
     print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
 
 
-# @sio.event
-# def on_connect(data):
-#     # print(f'got /on_connect status={data["status"]}')
-#     responses['on_connect'] = data['status']
-#     if data['status'] != 'connected':
-#         responses['on_connect'] = data['error']
-#         print(f"Failed to connect to Dashboard: {responses['on_connect']}")
-#         obs_control.update_output_better("Failed to connect to Dashboard", responses['on_connect'])
-#     else:
-#         print(f"Connected to Dashboard", responses['on_connect'])
-#         obs_control.update_output_better("Connected to Dashboard")
-
-
 @sio.event
 def on_connect(data):
     print(f'got /on_connect status={data["status"]}')
@@ -41,12 +28,11 @@ def on_connect(data):
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
         obs_control.update_output_better("Failed to connect to Dashboard: "+ responses['on_connect'])
+        obs_control.update_driver(False)
     else:
         obs_control.update_output_better("Connected to Dashboard")
+        obs_control.update_driver(True)
         print(f"Connected to Dashboard", responses['on_connect'])
-
-        
-
 
 
 @sio.event

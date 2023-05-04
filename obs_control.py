@@ -7,6 +7,7 @@ import queue, threading, time
 import config
 import numpy as np
 from random import randint
+import webbrowser
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -27,6 +28,12 @@ def split_new_lines(lines):
         split += line.split("\n")
     return split
 
+def create_link(text, url):
+    link_text = sg.Text(text, enable_events=True, text_color='blue')
+    def open_link():
+        webbrowser.open(url)
+    return link_text, open_link
+
 
 class OBSController:
     def __init__(self, name) -> None:
@@ -43,11 +50,11 @@ class OBSController:
         self.connected = False
 
         self.subtitles_queue = queue.Queue()
-        self.words_per_second = 3
+        self.default_words_per_second = 3
+        self.words_per_second = self.default_words_per_second
         self.min_delay = 4
-        self.default_reading_time = max(self.min_delay, 20 / self.words_per_second)
         self.max_rand = 5
-        self.last_message_extra_time = (1, 3)
+        self.default_word_count = 20
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
         self.subtitles_thread.start()
 
@@ -71,10 +78,12 @@ class OBSController:
     def subtitles_process(self):
         while True:
             try:
-                text, delay = self.subtitles_queue.get(timeout=1)
+                text, words = self.subtitles_queue.get(timeout=1)
                 self.change_text(self.dialogue_text_field, text)
                 window['subtitles'].update(value=text)
-                time.sleep(delay)
+                delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
+                rand_delay = randint(0, self.max_rand)
+                time.sleep(delay + rand_delay)
             except queue.Empty:
                 pass
     
@@ -116,14 +125,15 @@ class OBSController:
             for line in split_new_lines(lines):
                 broken_lines = self.split_long_lines(line)
                 for broken_line in broken_lines:
-                    reading_time = self.get_reading_speed(broken_line)
-                    self.subtitles_queue.put((broken_line, reading_time))
+                    words = self.get_words(broken_line)
+                    self.subtitles_queue.put((broken_line, words))
             
             # Hold the last one a bit longer
-            last = randint(self.last_message_extra_time[0], self.last_message_extra_time[1])
-            self.subtitles_queue.put((broken_line, last))
+            # last_extra_word_proxy = randint(*self.last_message_extra_words)
+            # self.subtitles_queue.put((broken_line, last_extra_word_proxy))
+
             # Timeout the very last subtitle at the end
-            self.subtitles_queue.put(("\n\n", self.default_reading_time))
+            self.subtitles_queue.put(("\n\n", self.default_word_count))
             
             sent = True
             message = "Subtitles sent to OBS"
@@ -131,14 +141,23 @@ class OBSController:
             message = "Error: OBS Controller not connected"
         return sent, message
     
-    def get_reading_speed(self, text):
-        words = len(text.split())
-        speed = words / self.words_per_second
-        final = max(self.min_delay, speed)
-        # get a gaussian distribution around the speed
-        extra = randint(0, self.max_rand)
-        
-        return final + extra
+    def get_words(self, text):
+        if text:
+            return len(text.split())
+        return 0
+    
+    def default_reading_time(self):
+        return max(
+            self.min_delay, 
+            self.get_reading_speed(self.default_word_count, self.words_per_second)
+        )
+    
+    def get_reading_speed(self, word_count, words_per_second):
+        try:
+            speed = word_count / words_per_second
+        except ZeroDivisionError:
+            speed = word_count / self.default_words_per_second
+        return speed
 
     def split_long_lines(self, text):
         # Split the into a max character length by word
@@ -318,11 +337,27 @@ small_label = (10, 1)
 small2_label = (22, 1)
 label_size = (22, 1)
 input_size = (40, 2)
-full_size = size=(label_size[0] + input_size[0], label_size[1])
+full_size = size =(label_size[0] + input_size[0], label_size[1])
+biggest_size = (50, 3)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
+
+# Links
+dashboard_event = "Dashboard"
+dashboard_link, dashboard_action = create_link(dashboard_event, "http://192.241.209.27:5050/")
+shows_event = "Shows Spreadsheet"
+shows_link, shows_action = create_link(shows_event, "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
+
+
 layout = [
+    [dashboard_link, shows_link],
+    [
+        sg.Text("Driver (Disconnected)", key="driver_label", size=label_size, expand_x=True), 
+        sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), 
+        sg.InputText(default_driver_pass, key="driver_password",size=input_size, expand_x=True, password_char="*"), 
+        sg.Button("Set Driver", key="update_driver")
+    ],
     [
         sg.Frame("OBS Instances", [
             [
@@ -343,25 +378,19 @@ layout = [
             ],
         ], expand_x=True),
     ],
+    [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set reading speed", key="set_sleep_time")],
+    [sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.max_rand, key="max_rand", size=input_size, expand_x=True), sg.Button("Set max delay", key="set_rand_delay")],
+    [sg.Text("Sheet Name", size=label_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
     [
-        sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), 
-        sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), 
-        sg.InputText(default_driver_pass, key="driver_password",size=input_size, expand_x=True, password_char="*"), 
-        sg.Button("Set Driver", key="update_driver")
-    ],
-    [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
-    [sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.max_rand, key="max_rand", size=input_size, expand_x=True), sg.Button("Set max delay randomness", key="set_rand_delay")],
-    [sg.Text("Sheet Name", size=full_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
-    [
-        sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
-        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
-        sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
+        # sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
+        # sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
+        # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
     [sg.Text("Showtime in", size=label_size, expand_x=True), sg.Text("", key="timer", size=input_size, expand_x=True)],
     [sg.Text("Next Show", size=label_size, expand_x=True), sg.Text(key="next_show", size=input_size, expand_x=True)],
-    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=input_size, expand_x=True)],
-    [sg.Text("", key="subtitles", size=full_size)],
+    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=biggest_size, expand_x=True)],
+    [sg.Text("", key="subtitles", size=biggest_size, expand_x=True)],
     # function_buttons
 ]
 
@@ -388,6 +417,10 @@ def update_next_show(show):
         content += show.get("Time", "Time missing") + " "
 
     window["next_show"].update(content)
+
+def update_driver(connected):
+    message = "Driver" if connected else "Driver (Not Connected)"
+    window["driver_label"].update(message)
 
 def secret():
     return obsc_stream.password

@@ -53,9 +53,11 @@ while True:
         else:
             message = "No shows scheduled."
         obs_control.update_output(window, message)
-
-
         # event_queue.put(("")) # change GUI TOOD
+    elif event == obs_control.dashboard_event:
+        obs_control.dashboard_action()
+    elif event == obs_control.shows_event:
+        obs_control.shows_action()
     elif event in obs_control.actions():
         event_queue.put((event, values))
 
