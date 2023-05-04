@@ -1,6 +1,7 @@
 import socketio
 import obs_control
 import config
+import time
 
 sio = socketio.Client()
 
@@ -9,10 +10,28 @@ driver_password = config.get_config_value("dasboard_password")
 dashboard_url = config.get_config_value("dashboard_url")
 # dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
 
+responses = {
+    'load_scene_recieved': False,
+    'end_scene_recieved': False,
+    'on_connect': '',
+}
 
 @sio.event
 def connect():
     print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
+
+
+@sio.event
+def on_connect(data):
+    # print(f'got /on_connect status={data["status"]}')
+    responses['on_connect'] = data['status']
+    if data['status'] != 'connected':
+        responses['on_connect'] = data['error']
+        print(f"Failed to connect to Dashboard: {responses['on_connect']}")
+        obs_control.update_output_better("Failed to connect to Dashboard", responses['on_connect'])
+    else:
+        print(f"Connected to Dashboard", responses['on_connect'])
+        obs_control.update_output_better("Connected to Dashboard")
 
 
 @sio.event
@@ -106,6 +125,14 @@ def listen():
     # DH: added some auth here
     # sio.connect('ws://192.241.209.27:5050', auth={'uid': uid, 'secret': obs_control.secret()}, wait_timeout=1)
     sio.connect(dashboard_url, auth={'uid': driver_uid, 'secret': driver_password}, wait_timeout=1)
-    connected = f'Connected to Dashboard: {sio.connected}'
-    print(connected)
+    
+    # check that we're connected
+    time.sleep(1)
+    # if responses['on_connect'] != 'connected':
+    #     sio.disconnect()
+    #     connected = f'Connected to Dashboard: {sio.connected}'
+
     sio.wait()
+
+    
+    

@@ -5,6 +5,7 @@ import inspect
 import multiprocessing as mp
 import queue, threading, time
 import config
+import numpy as np
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -42,8 +43,9 @@ class OBSController:
 
         self.subtitles_queue = queue.Queue()
         self.words_per_second = 3
-        self.min_delay = 2
+        self.min_delay = 4
         self.default_reading_time = max(self.min_delay, 20 / self.words_per_second)
+        self.last_message_extra_time = max(self.min_delay, 8)
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
         self.subtitles_thread.start()
 
@@ -107,6 +109,8 @@ class OBSController:
                     reading_time = self.get_reading_speed(broken_line)
                     self.subtitles_queue.put((broken_line, reading_time))
             
+            # Hold the last one a bit longer
+            self.subtitles_queue.put((broken_line, self.last_message_extra_time))
             # Timeout the very last subtitle at the end
             self.subtitles_queue.put(("\n\n", self.default_reading_time))
             
@@ -120,7 +124,10 @@ class OBSController:
         words = len(text.split())
         speed = words / self.words_per_second
         final = max(self.min_delay, speed)
-        return final
+        # get a gaussian distribution around the speed
+        extra = min(abs(np.random.normal(0, speed * 2)), speed * 4)
+        # print(final, extra, final+extra)
+        return final + extra
 
     def split_long_lines(self, text):
         # Split the into a max character length by word
@@ -357,11 +364,13 @@ def update_output(window, content):
         print("content", str(content))
         window["output"].update(str(content))
 
+def update_output_better(content):
+    update_output(window, content)
+
 def update_next_show(show):
     if show and isinstance(show, str):
         content = show
     elif show:
-        print("SHOW", show)
         content = show.get("Name", "Name mising") + " starting at "
         content += show.get("Date", "Date missing") + " "
         content += show.get("Time", "Time missing") + " "
@@ -396,4 +405,4 @@ def event_loop(window):
         elif event == sg.WIN_CLOSED:
             break
 
-        print(event, values)
+        # print(event, values)
