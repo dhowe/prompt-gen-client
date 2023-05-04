@@ -31,7 +31,6 @@ def get_json_data(filename):
         print(e)
         return None, "Unable to retrieve Scene JSON."
 
-    print(file_id)
     try:
         # Use the Drive API client to download the file
         file = drive_service.files().get(fileId=file_id).execute()

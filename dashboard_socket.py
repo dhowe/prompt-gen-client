@@ -1,7 +1,8 @@
 import socketio
-import obs_control
+import gui
 import config
 import time
+from obs_control import send_subtitles
 
 sio = socketio.Client()
 
@@ -12,7 +13,7 @@ dashboard_url = config.get_config_value("dashboard_url")
 
 responses = {
     'load_scene_recieved': 0,
-    'end_scene_recieved': False,
+    'end_scene_recieved': 0,
     'on_connect': '',
 }
 
@@ -27,11 +28,11 @@ def on_connect(data):
     responses['on_connect'] = data['status']
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
-        obs_control.message("Failed to connect to Dashboard: "+ responses['on_connect'])
-        obs_control.update_driver(False)
+        gui.message("Failed to connect to Dashboard: "+ responses['on_connect'])
+        gui.update_driver(False)
     else:
-        obs_control.message("Connected to Dashboard")
-        obs_control.update_driver(True)
+        gui.message("Connected to Dashboard")
+        gui.update_driver(True)
         print(f"Connected to Dashboard", responses['on_connect'])
 
 
@@ -54,6 +55,7 @@ def on_scene_loaded(data):  # this one is pending
 @sio.event
 def on_scene_complete(data):
     print(f'got /on_scene_complete')
+    responses['end_scene_recieved'] += 1
 
 
 def is_driver(data):
@@ -64,19 +66,19 @@ def is_driver(data):
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 
-@sio.event
-def update_topic(data):
-    updated = False
-    driver, message = is_driver(data)
-    field = "topic"
-    if driver:
-        try:
-            message = obs_control.change_text(field, data.get("content", ""))
-            updated = True
-        except Exception as e:
-            message = str(e)
-            print(message)
-    sio.emit('text_updated', {'updated': updated, 'message': message, "field": field})
+# @sio.event
+# def update_topic(data):
+#     updated = False
+#     driver, message = is_driver(data)
+#     field = "topic"
+#     if driver:
+#         try:
+#             message = change_text(field, data.get("content", ""))
+#             updated = True
+#         except Exception as e:
+#             message = str(e)
+#             print(message)
+#     sio.emit('text_updated', {'updated': updated, 'message': message, "field": field})
 
 
 @sio.event
@@ -87,7 +89,7 @@ def update_subtitles(data):
         try:
             messages = data.get("data", [])
             message_contents = [message.get("content", "") for message in messages]
-            did_update, message = obs_control.send_subtitles(message_contents)
+            did_update, message = send_subtitles(message_contents)
         except Exception as e:
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})

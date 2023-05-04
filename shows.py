@@ -2,8 +2,8 @@ import gspread
 import pandas as pd
 import config
 import pytz
-from datetime import datetime
 import time, threading
+import gui
 import obs_control
 import drive_files
 from dashboard_socket import start_show, responses
@@ -11,30 +11,42 @@ from dashboard_socket import start_show, responses
 TIMEZONE = config.get_config_value("timezone")
 
 class Show:
-    def __init__(self, data):
+    def __init__(self, data, get_json_data=True):
         self.data = data
+        self.name = data.get("Name", "Name missing")
+        self.date = data.get("Date", "Date missing")
+        self.time = data.get("Time", "Time missing")
         self.link = data['Link']
-        self.json, message = drive_files.get_json_data(self.link)
 
-        if not self.json:
-            obs_control.message(message + f" for {self.link}")
+        self.json = None
+        if get_json_data:
+            self.json = self._update_json()
 
         self.started = False
 
     def __repr__(self):
-        content = self.data.get("Name", "Name mising") + " starting at "
-        content += self.data.get("Date", "Date missing") + " "
-        content += self.data.get("Time", "Time missing") + " "
-
+        content = f"{self.name} starting at {self.time} {self.date}"
         return content
+    
+    def _update_json(self):
+        if self.link:
+            self.json, message = drive_files.get_json_data(self.link)
+        else:
+            self.json = None
+            message = "No show link"
+
+        gui.message(message + f" for {self.link}")
 
     def start(self):
+        if not self.json:
+            self._update_json()
+        
         if self.json:
-            print("Starting")
+            gui.update_timer(f"Starting show {self.name}")
             count = responses['load_scene_recieved']
             start_show(self.json)
             self.started = True
-            time.sleep(1)
+            time.sleep(2)
             if responses['load_scene_recieved'] > count:
                 message = f"Started {self.data['Name']}"
             else:
@@ -43,7 +55,7 @@ class Show:
             message = "No json found for", self.link
         
         print(message)
-        obs_control.message(message)
+        gui.message(message)
 
         
 
@@ -68,7 +80,7 @@ class ShowScheduleState:
     
     def set_next_show(self, next_show, upcoming_shows=None):
         self.next_show = next_show
-        if not upcoming_shows.empty and not upcoming_shows is None:
+        if upcoming_shows:
             self.upcoming_shows = upcoming_shows
     
     def add_countdown_action(self, name, advance_time, action):
@@ -91,11 +103,11 @@ class ShowScheduleState:
     def end_schedule(self):
         # terminate timer thread
         self.timer_thread.join()
-        obs_control.update_timer(None)
+        gui.update_timer(None)
 
     def start_timer(self):
         countdown = self.get_time_until_next_show()
-        obs_control.update_next_show(self.next_show)
+        gui.update_next_show(self.next_show, self.upcoming_shows) # update the GUI
         i = 0
         while self.on:
             if countdown is None:
@@ -108,7 +120,7 @@ class ShowScheduleState:
 
             if (i % 60) == 0:
                 countdown = self.get_time_until_next_show()
-            obs_control.update_timer(countdown)
+            gui.update_timer(countdown)
 
             for name, (advance_time, action) in self.countdown_actions.items():
                 if countdown <= advance_time:
@@ -182,9 +194,12 @@ def do_show_check():
     try:
         upcoming_shows = get_upcoming_shows()
         next_show = get_next_show(upcoming_shows)
+
         if (next_show and not prev_next_show) or \
             (prev_next_show and next_show and prev_next_show['datetime'] != next_show['datetime']):
-            result = (next_show, upcoming_shows)
+            upcoming_shows_objects = \
+                  upcoming_shows.apply(lambda row: Show(row, get_json_data=False), axis=1).tolist()
+            result = (next_show, upcoming_shows_objects)
         prev_next_show = next_show
         return result, None
     except Exception as e:
@@ -195,7 +210,7 @@ def do_show_check_and_generate_event(event_queue):
     if result:
         next_show, upcoming_shows = result
         schedule.set_next_show(next_show, upcoming_shows)
-        event_queue.put(("new_show", next_show))
+        event_queue.put(("new_show", result))
     elif error:
         event_queue.put(("new_show", "Error retrieving show: " + str(error)))
     
