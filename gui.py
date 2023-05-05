@@ -137,7 +137,7 @@ main_tab = [
         sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
     ],
-    function_buttons
+    # function_buttons,
 ]
 
 subtitle_settings = [
