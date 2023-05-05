@@ -47,7 +47,10 @@ while True:
         result = obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
         gui.message(result)
     elif event == "set_rand_delay":
-        result = obsc_stream.set_subtitle_max_rand_delay(values["max_rand"])
+        print("setting rand delay")
+        # result = obsc_stream.set_subtitle_max_rand_delay(values["max_rand"])
+        result = obs_control.obsc_stream.set_config_value_from_gui("max_rand", float(values["max_rand"]))
+        print(config.get_config_value("max_rand"))
         gui.message(result)
     elif event == "set_blank_hold":
         result = obsc_stream.set_subtitle_blank_hold(values["blank_hold"])

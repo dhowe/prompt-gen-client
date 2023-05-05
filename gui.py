@@ -2,7 +2,7 @@ import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
 import webbrowser
 import queue
 import inspect
-from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict
+from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict, cut_to_scenes
 import config
 
 default_driver = config.get_config_value("dashboard_user")
@@ -82,6 +82,7 @@ label_size = (22, 1)
 input_size = (40, 2)
 full_size = size =(label_size[0] + input_size[0], label_size[1])
 biggest_size = (45, 4)
+subtitles_size = (50, 3)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
@@ -147,15 +148,18 @@ subtitle_settings = [
         sg.Button("Set reading speed", key="set_sleep_time"),
         sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), 
         sg.InputText(obsc_stream.max_rand, key="max_rand", size=small_label, expand_x=True), 
-        sg.Button("Set max delay", key="set_rand_delay")
+        sg.Button("Set random delay range", key="set_rand_delay")
     ],
     [
-        sg.Text("Time between new messasges (sec)", size=label_size, expand_x=True), 
+        sg.Text("Time between new messages (sec)", size=label_size, expand_x=True), 
         sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=small_label, expand_x=True), 
         sg.Button("Set hold time", key="set_blank_hold")
     ],
+]
+
+scene_settings = [
     [
-        sg.Text("Interstitial Time", size=label_size, expand_x=True),
+        sg.Text("Interstitial scene duration", size=label_size, expand_x=True),
         sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label, expand_x=True),
         sg.Button("Set Interstitial Time", key="set_interstitial_scene")
     ],
@@ -167,7 +171,7 @@ layout = [
         sg.TabGroup([[
             sg.Tab('Connections', main_tab),
             sg.Tab('Subtitle Settings', subtitle_settings),
-            # sg.Tab('', tab2)
+            sg.Tab('Scene Settings', scene_settings),
         ]])
     ],
     [
@@ -180,9 +184,8 @@ layout = [
         ], expand_x=True, expand_y=True),
     ],
     
-    # [sg.Text("Next Show", size=label_size, expand_x=True), sg.Text(key="next_show", size=input_size, expand_x=True)],
     [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=biggest_size, expand_x=True, expand_y=True)],
-    [sg.Text("", key="subtitles", size=biggest_size, expand_x=True, expand_y=True)],
+    [sg.Text("", key="subtitles", size=subtitles_size, expand_x=True, expand_y=True, font=('Helvetica', 20), justification='center')],
    ]
 
 window = sg.Window("BeetleChat Stream", layout, resizable=True)
@@ -207,12 +210,16 @@ def update_shows(current=None, next=None, upcoming=list()):
         window["current_show"].update(current)
     if next:
         window["next_show"].update(next)
+    else:
+        window["next_show"].update("No shows scheduled")
 
-    text = ""
     if upcoming:
+        text = ""
         for show in upcoming:
                 text += str(show) + "\n"
-    window["upcoming_shows"].update(text)
+        window["upcoming_shows"].update(text)
+    else:
+        window["upcoming_shows"].update("No upcoming shows")
 
 def update_driver(connected, driver_name=None):
     message = "Driver" if connected else "Driver (Not Connected)"
@@ -241,6 +248,17 @@ def connect_to_obs_background():
     window['background_connected'].update(message)
     return 'connected', message
 
+
+def do_scene_cut(stream=None, background=None, interstitial=None):
+    # Not sure this should go here
+    scene_message = cut_to_scenes(
+        stream,
+        background,
+        interstitial
+    )
+    current_obs_scene(scene_message)
+    message(scene_message)
+
 def event_loop(window):
     while True:
         event, values = event_queue.get()
@@ -261,7 +279,7 @@ def event_loop(window):
             next = values[0]
             upcoming = values[1]
             upcoming = upcoming[1:] if len(upcoming) > 1 else []
-            update_shows(next=values[0], upcoming=values[1])
+            update_shows(next=next, upcoming=values[1])
         elif event == sg.WIN_CLOSED:
             break
 

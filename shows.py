@@ -66,34 +66,15 @@ class Show:
         else:
             message = "No json found for", self.link
 
-        self.do_scene_cut(
+        gui.do_scene_cut(
             self.obs_scene_changes["stream"], 
             self.obs_scene_changes["background"]
         )
-        
-        print(message)
-        gui.message(message)
 
     def interstitial(self):
         self.did_interstitial = True
-        print("interstitial for", self.name)
         scene = self.obs_scene_changes["interstitial"]
-        self.do_scene_cut(interstitial=scene)
-
-    def do_scene_cut(self, stream=None, background=None, interstitial=None):
-        # Not sure this should go here
-
-        message = obs_control.cut_to_scenes(
-            stream,
-            background,
-            interstitial
-        )
-        gui.current_obs_scene(message)
-        gui.message(message)
-
-        
-
-
+        gui.do_scene_cut(interstitial=scene)
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -174,9 +155,9 @@ class ShowScheduleState:
 
             gui.update_timer(countdown)
 
-            for name, (advance_time, action) in self.countdown_actions.items():
-                if countdown <= advance_time:
-                    action()
+            # for name, (advance_time, action) in self.countdown_actions.items():
+            #     if countdown <= advance_time:
+            #         action()
 
             time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second
 
@@ -258,7 +239,7 @@ def do_show_check():
         return None, e
     
 def do_show_check_and_generate_event(event_queue):
-    event_queue.put(("update_output", "Checking for new shows"))
+    # event_queue.put(("update_output", "Checking for new shows"))
     result, error = do_show_check()
     if result:
         next_show, upcoming_shows = result
@@ -266,6 +247,8 @@ def do_show_check_and_generate_event(event_queue):
         event_queue.put(("new_next_show", result))
     elif error:
         event_queue.put(("new_next_show", "Error retrieving show: " + str(error)))
+    else:
+        event_queue.put(("new_next_show", (None, [])))
     
 def check_for_shows(event_queue):
     """
