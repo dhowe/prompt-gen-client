@@ -7,7 +7,7 @@ import config
 
 default_driver = config.get_config_value("dashboard_user")
 default_driver_pass = config.get_config_value("dashboard_password", "")
-default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Shows")
+default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Test")
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -130,10 +130,12 @@ main_tab = [
         sg.Text("Sheet Name", size=label_size), 
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True), 
         sg.Button("Check for shows", key="update_sheet"),
-        # sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
-        # sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
-        # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
+    ],
+    [
+        # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
+        sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
+        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
     ],
     function_buttons
 ]
@@ -170,7 +172,8 @@ layout = [
     ],
     [
         sg.Frame("Upcoming Shows", [
-            [sg.Text("No dashboard connected", key="timer_label", size=small_label), sg.Text("", key="timer", size=small_label, expand_x=True)],
+            [sg.Text("No dashboard connected", key="timer_label", size=label_size, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
+            [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
             [sg.Text("Current Show", size=label_size), sg.Text(key="current_show", size=input_size, expand_x=True)],
             [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size, expand_x=True)],
             [sg.Multiline("", key='upcoming_shows', size=biggest_size, expand_x=True)],
@@ -195,6 +198,9 @@ def update_output(window, content):
 
 def message(content):
     update_output(window, content)
+
+def current_obs_scene(message):
+    window["current_scene"].update(message)
 
 def update_shows(current=None, next=None, upcoming=list()):
     if current:

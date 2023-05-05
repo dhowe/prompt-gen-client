@@ -66,7 +66,7 @@ class Show:
         else:
             message = "No json found for", self.link
 
-        obs_control.cut_to_scenes(
+        self.do_scene_cut(
             self.obs_scene_changes["stream"], 
             self.obs_scene_changes["background"]
         )
@@ -77,8 +77,23 @@ class Show:
     def interstitial(self):
         self.did_interstitial = True
         print("interstitial for", self.name)
-        obs_control.cut_to_scenes(self.obs_scene_changes["interstitial"])
-        gui.message(f"Interstitial for {self.name}")
+        scene = self.obs_scene_changes["interstitial"]
+        self.do_scene_cut(interstitial=scene)
+
+    def do_scene_cut(self, stream=None, background=None, interstitial=None):
+        # Not sure this should go here
+
+        message = obs_control.cut_to_scenes(
+            stream,
+            background,
+            interstitial
+        )
+        gui.current_obs_scene(message)
+        gui.message(message)
+
+        
+
+
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -173,15 +188,14 @@ def get_all_shows():
     gc = gspread.service_account('google_sheets_access.json')
     spreadsheet = gc.open_by_key(sheet_id)
     worksheet = spreadsheet.worksheet(sheet_name)
-    rows = worksheet.get_all_records()
+    rows = worksheet.get_all_values()
     try:
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows[2:], columns=rows[1]) # Use the second row as headers and skip the first row
         df = df[~(df['Date'].isna() | df['Time'].isna())] # filter out rows with no date or time
         df['datetime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
         return df
     except (KeyError, ValueError):
         return None
-    
 
 def get_upcoming_shows():
     all_shows_df = get_all_shows()

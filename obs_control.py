@@ -1,7 +1,8 @@
 import queue, threading, time
 import config
 from random import randint
-import obsws_python as obs
+import obsws_python as obs 
+# Reference: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
 
 
 def debug(text):
@@ -216,13 +217,21 @@ class OBSController:
         return []
 
     def cut_to_scene(self, scene):
-        if self.connected:
-            valid = [scene.lower() for scene in self.get_valid_scene_names()]
-            if scene.lower() not in valid:
-                return f"{scene} must be one of: {' '.join(valid)}"
-            self.cl.set_current_program_scene(scene)
-            return f"Change {self.name} to " + scene
-        return "Unable to change scene, not connected to OBS."
+        if not self.connected:
+            return f"OBS {self.name.title()}: not connected"
+            
+        if True: # not scene:
+            try:
+                scene = self.cl.get_current_program_scene().current_program_scene_name
+            except Exception as e:
+                return f"OBS {self.name.title()}: errror {e}"
+            return f"OBS {self.name.title()}: {scene}"
+
+        valid = [scene.lower() for scene in self.get_valid_scene_names()]
+        if scene.lower() not in valid:
+            return f"{scene} must be one of: {' '.join(valid)}"
+        self.cl.set_current_program_scene(scene)
+        return f"OBS {self.name.title()}: {scene}"
 
 class Scenes:
     def __init__(self, obs_state):
@@ -282,10 +291,12 @@ def cut_to_scene():
 def secret():
     return obsc_stream.password
 
-def cut_to_scenes(stream_scene=None, background_scene=None):
-    m1 = obsc_stream.cut_to_scene(stream_scene)
-    m2 = obsc_background.cut_to_scene(background_scene)
-    return m1 + "\n" + m2
+def cut_to_scenes(stream=None, background=None, interstitial=None):
+    if stream and interstitial:
+        print("WARNING: cut_to_scenes called with both stream and interstitial. Using stream.")
+    m1 = obsc_stream.cut_to_scene(stream) if stream else obsc_stream.cut_to_scene(interstitial)
+    m2 = obsc_background.cut_to_scene(background)
+    return "\n".join([m1, m2])
 
 not_clickable = ["is_text", "update_output", "debug"]
 available_functions = [(name, func) for name, func in globals().items() if
