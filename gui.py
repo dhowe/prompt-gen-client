@@ -2,7 +2,7 @@ import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
 import webbrowser
 import queue
 import inspect
-from obs_control import obsc_stream, obsc_background
+from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict
 import config
 
 default_driver = config.get_config_value("dashboard_user")
@@ -85,6 +85,11 @@ biggest_size = (45, 4)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
+# Automatically generate buttons based on available functions
+function_buttons = []
+for name, func in available_functions:
+    function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
+
 
 # Links
 dashboard_event = "Dashboard"
@@ -130,7 +135,7 @@ main_tab = [
         # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
-    # function_buttons
+    function_buttons
 ]
 
 subtitle_settings = [
@@ -160,7 +165,7 @@ layout = [
     ],
     [
         sg.Frame("Upcoming Shows", [
-            [sg.Text("Timer", size=small_label, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
+            [sg.Text("No dashboard connected", key="timer_label", size=small_label, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
             [sg.Multiline("", key='upcoming_shows', size=biggest_size, expand_x=True)],
         ], expand_x=True, expand_y=True),
     ],
@@ -185,33 +190,45 @@ def message(content):
     update_output(window, content)
 
 def update_next_show(show, upcoming_shows=list()):
-    text = str(show)
+    text = ""
     if upcoming_shows:
+        text = "Next Show:"
         for show in upcoming_shows:
-                text += "\n" + str(show)
+                text += str(show) + "\n"
     window["upcoming_shows"].update(text)
 
-def update_driver(connected):
+def update_driver(connected, driver_name=None):
     message = "Driver" if connected else "Driver (Not Connected)"
     window["driver_label"].update(message)
 
+    uid = "to " + driver_name if driver_name else default_driver
+    window["timer_label"].update("No dashboard connection" if not connected else f"Connected {uid}")
 
-# Automatically generate buttons based on available functions
-function_buttons = []
-not_clickable = ["is_text", "update_output", "debug"]
-available_functions = [(name, func) for name, func in globals().items() if
-                       callable(func) and not name.startswith("_") and name not in not_clickable] 
-for name, func in available_functions:
-    function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
 
-def actions():
-    return [x[0] for x in available_functions]
+# TODO these two functions really shouldn't go here
+def connect_to_obs_stream():
+    window['stream_connected'].update("Connecting...")
+    stream_ip       = window['stream_ip'].get()
+    stream_port     = window['stream_port'].get()
+    stream_password = window['stream_password'].get()
+    connected, message = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+    window['stream_connected'].update(message)
+    return 'connected', message
+
+def connect_to_obs_background():
+    window['background_connected'].update("Connecting...")
+    background_ip       = window['background_ip'].get()
+    backgorund_port     = window['background_port'].get()
+    backgorund_password = window['background_password'].get()
+    connected, message = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
+    window['background_connected'].update(message)
+    return 'connected', message
 
 def event_loop(window):
     while True:
         event, values = event_queue.get()
-        if event in actions():
-            function = globals()[event]
+        if event in available_function_dict.keys():
+            function = available_function_dict[event]
             num_params = len(inspect.signature(function).parameters)
             if num_params == 2:
                 result = function(values["field"], values["value"])
@@ -225,7 +242,6 @@ def event_loop(window):
             event_queue.put(("update_output", result))
         elif event == "new_show":
             update_next_show(*values)
-            pass
         elif event == sg.WIN_CLOSED:
             break
 

@@ -29,10 +29,10 @@ def on_connect(data):
     if data['status'] != 'connected':
         responses['on_connect'] = data['error']
         gui.message("Failed to connect to Dashboard: "+ responses['on_connect'])
-        gui.update_driver(False)
+        gui.update_driver(False, driver_uid)
     else:
         gui.message("Connected to Dashboard")
-        gui.update_driver(True)
+        gui.update_driver(True, driver_uid)
         print(f"Connected to Dashboard", responses['on_connect'])
 
 

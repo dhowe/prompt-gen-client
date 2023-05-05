@@ -1,7 +1,6 @@
 import queue, threading, time
 import config
 from random import randint
-
 import obsws_python as obs
 
 
@@ -198,9 +197,20 @@ class OBSController:
             msg = f"Failed to change '{name}' to '{new_text}'.\n"
             msg += "Available text sources: " + " ".join(show_texts())
 
-    def change_scene(self, name):
-        pass # TODO
+    def get_valid_scene_names(self):
+        if self.connected:
+            return [s['sceneName'] for s in self.cl.get_scene_list().scenes]
+        return []
 
+    def cut_to_scene(self, scene):
+        if self.connected:
+            valid = self.get_valid_scene_names()
+            print(valid)
+            if scene not in valid:
+                return f"{scene} must be one of: {' '.join(valid)}"
+            self.cl.set_current_program_scene(scene)
+            return f"Change {self.name} to " + scene
+        return "Unable to change scene, not connected to OBS."
 
 class Scenes:
     def __init__(self, obs_state):
@@ -228,8 +238,6 @@ class Scenes:
 obsc_stream = OBSController("stream")
 obsc_background =  OBSController("background")
 
-scenes = Scenes(obsc_stream)
-
 def is_text(item):
     return 'text' in item['inputKind']
 
@@ -253,6 +261,7 @@ def show_texts():
     return texts
 
 
+
 # Buttons
 def cycle_scenes():
     scenes.cycle()
@@ -260,6 +269,18 @@ def cycle_scenes():
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)
 
+def cut_to_scene():
+    return obsc_stream.cut_to_scene("Psychedelics")
 
 def secret():
     return obsc_stream.password
+
+def cut_to_scenes(stream_scene=None, background_scene=None):
+    m1 = obsc_stream.cut_to_scene(stream_scene)
+    m2 = obsc_background.cut_to_scene(background_scene)
+    return m1 + "\n" + m2
+
+not_clickable = ["is_text", "update_output", "debug"]
+available_functions = [(name, func) for name, func in globals().items() if
+                       callable(func) and not name.startswith("_") and name not in not_clickable]
+available_function_dict = dict(available_functions)

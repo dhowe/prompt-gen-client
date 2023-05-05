@@ -1,5 +1,5 @@
 import obs_control
-from obs_control import obsc_stream, obsc_background
+from obs_control import obsc_stream, obsc_background, available_function_dict
 
 import dashboard_socket
 import threading
@@ -65,11 +65,16 @@ while True:
             message = "No shows scheduled."
         gui.message(message)
         # event_queue.put(("")) # change GUI TOOD
+    
     elif event == gui.dashboard_event:
         gui.dashboard_action()
     elif event == gui.shows_event:
         gui.shows_action()
-    elif event in gui.actions():
+    elif event == "connect_to_obs_background":
+        gui.connect_to_obs_background()
+    elif event == "connect_to_obs_stream":
+        gui.connect_to_obs_stream()
+    elif event in available_function_dict.keys():
         event_queue.put((event, values))
 
     

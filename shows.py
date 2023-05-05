@@ -16,6 +16,11 @@ class Show:
         self.name = data.get("Name", "Name missing")
         self.date = data.get("Date", "Date missing")
         self.time = data.get("Time", "Time missing")
+        self.obs_scene_changes = {
+            "stream": data.get("Stream Scene"),
+            "background": data.get("Background Scene"),
+            "interstitial": data.get("Interstitial Scene"),
+        }
         self.link = data['Link']
 
         self.json = None
@@ -26,6 +31,8 @@ class Show:
 
     def __repr__(self):
         content = f"{self.name} starting at {self.time} {self.date}"
+        content += f" Cutting to scene: {self.obs_scene_changes['stream']}"
+        content += f", background: {self.obs_scene_changes['background']}"
         return content
     
     def _update_json(self):
@@ -39,9 +46,11 @@ class Show:
 
     def start(self):
         if not self.json:
+            print("no json")
             self._update_json()
         
         if self.json:
+            print("yess json")
             gui.update_timer(f"Starting show {self.name}")
             count = responses['load_scene_recieved']
             start_show(self.json)
@@ -53,6 +62,12 @@ class Show:
                 message = f"Failed to start {self.data['Name']}"
         else:
             message = "No json found for", self.link
+
+        print("cut to scenes")
+        obs_control.cut_to_scenes(
+            self.obs_scene_changes["stream"], 
+            self.obs_scene_changes["background"]
+        )
         
         print(message)
         gui.message(message)
@@ -206,6 +221,7 @@ def do_show_check():
         return None, e
     
 def do_show_check_and_generate_event(event_queue):
+    event_queue.put(("update_output", "Checking for new shows"))
     result, error = do_show_check()
     if result:
         next_show, upcoming_shows = result
