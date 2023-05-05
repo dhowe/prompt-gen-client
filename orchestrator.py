@@ -52,6 +52,11 @@ while True:
     elif event == "set_blank_hold":
         result = obsc_stream.set_subtitle_blank_hold(values["blank_hold"])
         gui.message(result)
+    elif event == "set_interstitial_time":
+        result = obs_control.obsc_stream.set_config_value_from_gui("interstitial_time", values["interstitial_time"])
+        gui.message(result)
+
+
     elif event == "start_stop_schedule":
         on = schedule.toggle()
         if on and schedule.next_show:

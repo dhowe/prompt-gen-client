@@ -152,6 +152,11 @@ subtitle_settings = [
         sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=small_label, expand_x=True), 
         sg.Button("Set hold time", key="set_blank_hold")
     ],
+    [
+        sg.Text("Interstitial Time", size=label_size, expand_x=True),
+        sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label, expand_x=True),
+        sg.Button("Set Interstitial Time", key="set_interstitial_scene")
+    ],
 ]
 
 layout = [
@@ -165,7 +170,9 @@ layout = [
     ],
     [
         sg.Frame("Upcoming Shows", [
-            [sg.Text("No dashboard connected", key="timer_label", size=small_label, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
+            [sg.Text("No dashboard connected", key="timer_label", size=small_label), sg.Text("", key="timer", size=small_label, expand_x=True)],
+            [sg.Text("Current Show", size=label_size), sg.Text(key="current_show", size=input_size, expand_x=True)],
+            [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size, expand_x=True)],
             [sg.Multiline("", key='upcoming_shows', size=biggest_size, expand_x=True)],
         ], expand_x=True, expand_y=True),
     ],
@@ -189,11 +196,15 @@ def update_output(window, content):
 def message(content):
     update_output(window, content)
 
-def update_next_show(show, upcoming_shows=list()):
+def update_shows(current=None, next=None, upcoming=list()):
+    if current:
+        window["current_show"].update(current)
+    if next:
+        window["next_show"].update(next)
+
     text = ""
-    if upcoming_shows:
-        text = "Next Show:"
-        for show in upcoming_shows:
+    if upcoming:
+        for show in upcoming:
                 text += str(show) + "\n"
     window["upcoming_shows"].update(text)
 
@@ -240,8 +251,11 @@ def event_loop(window):
             update_output(window, result)
             # Send the result back to the main thread
             event_queue.put(("update_output", result))
-        elif event == "new_show":
-            update_next_show(*values)
+        elif event == "new_next_show":
+            next = values[0]
+            upcoming = values[1]
+            upcoming = upcoming[1:] if len(upcoming) > 1 else []
+            update_shows(next=values[0], upcoming=values[1])
         elif event == sg.WIN_CLOSED:
             break
 

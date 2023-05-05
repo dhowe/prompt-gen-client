@@ -38,7 +38,7 @@ class OBSController:
         self.blank_hold = 0
         self.max_rand = 5
         self.default_word_count = 20
-
+        self.interstitial_time = config.get_config_value("interstitial_time", 30)
         self.on_subtitles_update = lambda x: None # a callback that gets called whenver a new subtitle is displayed
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
         self.subtitles_thread.start()
@@ -65,6 +65,15 @@ class OBSController:
             return f"Blank hold time set to {self.blank_hold} seconds."
         except ValueError:
             return "Unable to set random range time. Please enter a number."
+        
+    def set_config_value_from_gui(self, key, value):
+        try:
+            # see if self has a variable 'key'
+            setattr(self, key, value)
+            config.write_config_value(key, value)
+            return f"Set {key} to {value}"
+        except AttributeError:
+            return f"Unable to set {key} to {value}"
 
     def subtitles_process(self):
         while True:
@@ -77,6 +86,12 @@ class OBSController:
                 time.sleep(delay + rand_delay)
             except queue.Empty:
                 pass
+
+    def clear_subtitles_queue(self):
+        self.subtitles_queue = queue.Queue()
+        
+    def add_empty_subtitles(self):
+        self.subtitles_queue.put(("\n\n", self.blank_hold))
     
     def _write_settings(self, ip, port, password):
         config.write_config_value(f"{self.name}_obs_ip", ip)
@@ -122,7 +137,7 @@ class OBSController:
             # self.subtitles_queue.put((broken_line, last_extra_word_proxy))
 
             # Timeout the very last subtitle at the end
-            self.subtitles_queue.put(("\n\n", self.blank_hold))
+            self.add_empty_subtitles()
             
             sent = True
             message = "Subtitles sent to OBS"

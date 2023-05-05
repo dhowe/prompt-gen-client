@@ -6,6 +6,7 @@ import time, threading
 import gui
 import obs_control
 import drive_files
+import time
 from dashboard_socket import start_show, responses
 
 TIMEZONE = config.get_config_value("timezone")
@@ -27,12 +28,14 @@ class Show:
         if get_json_data:
             self.json = self._update_json()
 
-        self.started = False
+        self.did_start = False
+        self.did_interstitial = False
 
     def __repr__(self):
-        content = f"{self.name} starting at {self.time} {self.date}"
-        content += f" Cutting to scene: {self.obs_scene_changes['stream']}"
-        content += f", background: {self.obs_scene_changes['background']}"
+        content = f"{self.name} at {self.time}"
+        content += f" Stream: {self.obs_scene_changes['stream']}"
+        content += f" Background: {self.obs_scene_changes['background']}"
+        content += f" Interstitial: {self.obs_scene_changes['interstitial']}"
         return content
     
     def _update_json(self):
@@ -45,17 +48,17 @@ class Show:
         gui.message(message + f" for {self.link}")
 
     def start(self):
+        self.did_start = True
+
         if not self.json:
-            print("no json")
             self._update_json()
         
         if self.json:
-            print("yess json")
             gui.update_timer(f"Starting show {self.name}")
             count = responses['load_scene_recieved']
+            obs_control.obsc_stream.clear_subtitles_queue()
             start_show(self.json)
-            self.started = True
-            time.sleep(2)
+            time.sleep(1)
             if responses['load_scene_recieved'] > count:
                 message = f"Started {self.data['Name']}"
             else:
@@ -63,7 +66,6 @@ class Show:
         else:
             message = "No json found for", self.link
 
-        print("cut to scenes")
         obs_control.cut_to_scenes(
             self.obs_scene_changes["stream"], 
             self.obs_scene_changes["background"]
@@ -72,7 +74,11 @@ class Show:
         print(message)
         gui.message(message)
 
-        
+    def interstitial(self):
+        self.did_interstitial = True
+        print("interstitial for", self.name)
+        obs_control.cut_to_scenes(self.obs_scene_changes["interstitial"])
+        gui.message(f"Interstitial for {self.name}")
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -118,30 +124,46 @@ class ShowScheduleState:
     def end_schedule(self):
         # terminate timer thread
         self.timer_thread.join()
+        self.clear()
+
+    def clear(self):
         gui.update_timer(None)
+        obs_control.obsc_stream.clear_subtitles_queue()
 
     def start_timer(self):
+        # record the time
+        start_time = time.time()
+
         countdown = self.get_time_until_next_show()
-        gui.update_next_show(self.next_show, self.upcoming_shows) # update the GUI
+        gui.update_shows(next=self.next_show, upcoming=self.upcoming_shows) # update the GUI
         i = 0
         while self.on:
             if countdown is None:
                 return
-            countdown -= pd.Timedelta(seconds=1)
+            countdown = self.get_time_until_next_show()
+            if countdown < pd.Timedelta(seconds=0):
+                countdown = pd.Timedelta(seconds=0)
 
             # check if it is less than a second until the next show
             if countdown <= pd.Timedelta(seconds=1):
-                self.next_show.start()
+                if not self.next_show.did_start: # if the show hasn't been attempted to start yet
+                    self.next_show.start()
+                    gui.update_shows(
+                        current=self.next_show,
+                        next=self.upcoming_shows[1] if len(self.upcoming_shows) > 1 else None, 
+                        upcoming=self.upcoming_shows[2:]
+                    )
+            elif countdown <= pd.Timedelta(seconds=obs_control.obsc_stream.interstitial_time):
+                if not self.next_show.did_interstitial:
+                    self.next_show.interstitial()
 
-            if (i % 60) == 0:
-                countdown = self.get_time_until_next_show()
             gui.update_timer(countdown)
 
             for name, (advance_time, action) in self.countdown_actions.items():
                 if countdown <= advance_time:
                     action()
 
-            time.sleep(1)
+            time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second
 
 schedule = ShowScheduleState()
 
@@ -154,6 +176,7 @@ def get_all_shows():
     rows = worksheet.get_all_records()
     try:
         df = pd.DataFrame(rows)
+        df = df[~(df['Date'].isna() | df['Time'].isna())] # filter out rows with no date or time
         df['datetime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
         return df
     except (KeyError, ValueError):
@@ -226,9 +249,9 @@ def do_show_check_and_generate_event(event_queue):
     if result:
         next_show, upcoming_shows = result
         schedule.set_next_show(next_show, upcoming_shows)
-        event_queue.put(("new_show", result))
+        event_queue.put(("new_next_show", result))
     elif error:
-        event_queue.put(("new_show", "Error retrieving show: " + str(error)))
+        event_queue.put(("new_next_show", "Error retrieving show: " + str(error)))
     
 def check_for_shows(event_queue):
     """
@@ -240,7 +263,7 @@ def check_for_shows(event_queue):
 
 if __name__ == "__main__":
     print("all_shows", get_all_shows())
-    upcoming_shows = get_upcoming_shows()
-    print("upcoming_shows", upcoming_shows)
-    next_show = get_next_show(upcoming_shows)
+    upcoming = get_upcoming_shows()
+    print("upcoming_shows", upcoming)
+    next_show = get_next_show(upcoming)
     print(next_show)
