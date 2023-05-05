@@ -71,7 +71,7 @@ class OBSController:
             try:
                 text, words = self.subtitles_queue.get(timeout=1)
                 self.change_text(self.dialogue_text_field, text)
-                self.on_display_subtitles(text) # Update the GUI
+                self.on_subtitles_update(text) # Update the GUI
                 delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
                 rand_delay = randint(0, self.max_rand)
                 time.sleep(delay + rand_delay)
