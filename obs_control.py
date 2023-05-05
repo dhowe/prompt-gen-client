@@ -281,6 +281,12 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
+def technical():
+    return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
+
+def starting_soom():
+   return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Starting Soon"))
+
 
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)

@@ -11,6 +11,8 @@
     "stream_obs_password": "password",
     "stream_obs_port": "8888",
     "interstitial_time": 30,
+    "starting_soon_scene": "Starting Soon",
     "subtitle_layer_name": "Subtitle Layer",
+    "technical_difficulties_scene": "Technical Difficulties",
     "timezone": "America/Los_Angeles"
 }
