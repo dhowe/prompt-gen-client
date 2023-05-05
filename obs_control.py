@@ -220,7 +220,7 @@ class OBSController:
         if not self.connected:
             return f"OBS {self.name.title()}: not connected"
             
-        if True: # not scene:
+        if not scene:
             try:
                 scene = self.cl.get_current_program_scene().current_program_scene_name
             except Exception as e:
