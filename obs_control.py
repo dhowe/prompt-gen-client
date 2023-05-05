@@ -111,8 +111,6 @@ class OBSController:
     def queue_subtitles(self, lines):
         sent = False
         if self.connected:
-            print("connected", self.connected)
-            # text = "\n".join(lines)
             for line in split_new_lines(lines):
                 broken_lines = self.split_long_lines(line)
                 for broken_line in broken_lines:
@@ -204,9 +202,8 @@ class OBSController:
 
     def cut_to_scene(self, scene):
         if self.connected:
-            valid = self.get_valid_scene_names()
-            print(valid)
-            if scene not in valid:
+            valid = [scene.lower() for scene in self.get_valid_scene_names()]
+            if scene.lower() not in valid:
                 return f"{scene} must be one of: {' '.join(valid)}"
             self.cl.set_current_program_scene(scene)
             return f"Change {self.name} to " + scene
@@ -260,11 +257,6 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
-
-
-# Buttons
-def cycle_scenes():
-    scenes.cycle()
 
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)

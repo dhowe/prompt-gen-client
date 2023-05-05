@@ -85,11 +85,14 @@ def is_driver(data):
 def update_subtitles(data):
     did_update = False
     driver, message = is_driver(data)
+    print("DEBUG", driver, "MESSAGE", message)
     if driver:
         try:
             messages = data.get("data", [])
             message_contents = [message.get("content", "") for message in messages]
+            print("DEBUG SENDING SUBTITLES")
             did_update, message = send_subtitles(message_contents)
+            print("DEBUG SENT:", did_update, message)
         except Exception as e:
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
