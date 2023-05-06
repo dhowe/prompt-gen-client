@@ -122,7 +122,10 @@ class OBSController:
             #     print("Error with subtitles_process", e)
                 
     def clear_subtitles_queue(self):
-        self.subtitles_queue = queue.Queue()
+        # self.subtitles_queue = queue.Queue()
+        with self.subtitles_queue.mutex:
+            self.subtitles_queue.queue.clear()
+            
         
     def _write_settings(self, ip, port, password):
         config.write_config_value(f"{self.name}_obs_ip", ip)

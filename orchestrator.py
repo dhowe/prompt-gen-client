@@ -48,8 +48,7 @@ obs_control.add_function("pause_subtitles", pause_subtitles)
 def clear_subtitles():
     """Clear the subtitles"""
     obsc_stream.clear_subtitles_queue()
-    gui.window['subtitles'].update(value="")
-    gui.window['upcoming_subtitles'].update(value="")
+    gui.clear_subtitles()
     obsc_stream.add_empty_subtitles()
 obs_control.add_function("clear_subtitles", clear_subtitles)
 

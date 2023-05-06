@@ -12,6 +12,8 @@ default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Te
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
 
+status = ""
+
 def create_link(text, url):
     link_text = sg.Text(text, enable_events=True, text_color='blue')
     def open_link():
@@ -227,7 +229,9 @@ def update_output(window, content):
         window["output"].update(str(content))
 
 def message(content):
-    update_output(window, content)
+    global status
+    status = content + "\n" + status
+    update_output(window, status)
 
 def current_obs_scene(message):
     window["current_scene"].update(message)
@@ -285,3 +289,7 @@ def do_scene_cut(stream=None, background=None, interstitial=None):
     )
     current_obs_scene(scene_message)
     message(scene_message)
+
+def clear_subtitles():
+    window['subtitles'].update(value="")
+    window['upcoming_subtitles'].update(value="")
