@@ -35,8 +35,8 @@ class OBSController:
         self.subtitles_queue = queue.Queue()
         self.default_words_per_second = 3
         self.words_per_second = self.default_words_per_second
-        self.min_delay = 4
-        self.blank_hold = 0
+        self.min_delay = config.get_config_value("min_delay", 3)
+        self.blank_hold = config.get_config_value("blank_hold", 0)
         self.max_rand = config.get_config_value("max_rand", 5)
         self.default_word_count = 20
         self.interstitial_time = config.get_config_value("interstitial_time", 30)
@@ -75,6 +75,14 @@ class OBSController:
         except ValueError:
             return "Unable to set random range time. Please enter a number."
         
+    
+    def set_subtitle_blank_hold(self, blank_hold):
+        try:
+            self.blank_hold = float(blank_hold)
+            return f"Blank hold time set to {self.blank_hold} seconds."
+        except ValueError:
+            return "Unable to set random range time. Please enter a number."
+        
     def set_config_value_from_gui(self, key, value):
         try:
             # see if self has a variable 'key'
@@ -91,7 +99,9 @@ class OBSController:
                 continue
 
             if self.subtitles_queue.empty():
+                print("empty queue", time.time())
                 pass
+
             text, words = self.subtitles_queue.get()
             if text is None:
                 # A blank hold
@@ -102,11 +112,11 @@ class OBSController:
                 rand_delay = randint(0, self.max_rand)
                 delay = delay + rand_delay
 
+            print("changing", text)
             self.change_text(self.dialogue_text_field, text)
             upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
             self.on_subtitles_update(text, upcoming) # Update the GUI
             
-            # print(f"sleeping for total {delay + rand_delay} delay {delay} + rand {rand_delay}  self.max_rand {self.max_rand} min delay {self.min_delay}")
             time.sleep(delay + rand_delay)
             # except Exception as e:
             #     print("Error with subtitles_process", e)
@@ -173,7 +183,7 @@ class OBSController:
         return 0
 
     def add_empty_subtitles(self):
-        self.subtitles_queue.put((None, self.blank_hold))
+        self.subtitles_queue.put((None, float(self.blank_hold)))
     
     def default_reading_time(self):
         return max(

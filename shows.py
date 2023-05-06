@@ -59,9 +59,11 @@ class Show:
         if self.json:
             gui.update_timer(f"Starting show {self.name}")
             count = responses['load_scene_recieved']
+            # Not sure that these should go here...
             obs_control.obsc_stream.clear_subtitles_queue()
+            obs_control.obsc_stream.play_subtitles()
             start_show(self.json)
-            time.sleep(1)
+            time.sleep(1) # wait for the dashboard to respond
             if responses['load_scene_recieved'] > count:
                 message = f"Started {self.data['Name']}"
             else:
@@ -158,6 +160,7 @@ class ShowScheduleState:
             if countdown <= pd.Timedelta(seconds=1):
                 if not self.next_show.did_start: # if the show hasn't been attempted to start yet
                     self.next_show.start()
+                    obs_control.clear_subtitles()
                     gui.update_shows(
                         current=self.next_show,
                         next=self.upcoming_shows[1] if len(self.upcoming_shows) > 1 else None, 

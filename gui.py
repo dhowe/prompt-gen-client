@@ -77,13 +77,15 @@ except:
     pass
 
 small_label = (10, 1)
+number = (5, 1)
 small2_label = (22, 1)
 label_size = (22, 1)
 input_size = (40, 2)
 full_size = size =(label_size[0] + input_size[0], label_size[1])
 biggest_size = (45, 4)
 subtitles_size = (50, 3)
-column_size = (40, 6)
+column_element = (40, 2)
+column_size = (40, 7)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
@@ -140,16 +142,23 @@ main_tab = [
 subtitle_settings = [
     [
         sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), 
-        sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=small_label, expand_x=True), 
+        sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=number, expand_x=True), 
         sg.Button("Set reading speed", key="set_sleep_time"),
+    ],
+    [
         sg.Text("Max Random Delay (sec)", size=label_size, expand_x=True), 
-        sg.InputText(obsc_stream.max_rand, key="max_rand", size=small_label, expand_x=True), 
+        sg.InputText(obsc_stream.max_rand, key="max_rand", size=number, expand_x=True), 
         sg.Button("Set random delay range", key="set_rand_delay")
     ],
     [
-        sg.Text("Time between new messages (sec)", size=label_size, expand_x=True), 
-        sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=small_label, expand_x=True), 
-        sg.Button("Set hold time", key="set_blank_hold")
+        sg.Text("Minimum subtitle duration (sec)", size=label_size, expand_x=True), 
+        sg.InputText(obsc_stream.min_delay, key="min_delay", size=number, expand_x=True), 
+        sg.Button("Set minimum", key="set_min_delay"),
+    ],
+    [
+        sg.Text("Hold between new messages (sec)", size=label_size, expand_x=True), 
+        sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=number, expand_x=True), 
+        sg.Button("Set hold time", key="set_blank_hold"),
     ],
 ]
 
@@ -187,11 +196,16 @@ layout = [
         sg.Column([
             [sg.Text("Upcoming Shows")],
             [sg.Text("", key='upcoming_shows', size=column_size, expand_x=True, expand_y=True)],
-        ], expand_x=True, scrollable=True,  vertical_scroll_only=True),
+        ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
         sg.Column([
-            [sg.Text("", key="subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 20), justification='center')],
-            [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12), justification='center')],
-        ], expand_x=True, scrollable=True,  vertical_scroll_only=True),
+            [
+                sg.Button("Reset Subtitles", key="clear_subtitles", pad=((5, 5), (0, 5))),
+                sg.Button("Pause", key="pause_subtitles", pad=((5, 5), (0, 5))),
+                sg.Button("Resume", key="play_subtitles", pad=((5, 5), (0, 5))),
+             ],
+            [sg.Text("", key="subtitles", size=column_element, expand_x=True, expand_y=True, font=('Helvetica', 15))],
+            [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12))],
+        ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
     ],
     [
         # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),

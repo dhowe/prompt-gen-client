@@ -28,9 +28,30 @@ def technical():
     """Cut to the technical difficulties scene"""
     print("technical difficulties")
     schedule.stop_schedule()
+    obs_control.obsc_stream.pause_subtitles()
     stop_schedule_gui(window)
     return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
 obs_control.add_function("technical", technical)
+
+def play_subtitles():
+    """Play the subtitles"""
+    obsc_stream.play_subtitles()
+    gui.message("Playing subtitles")
+obs_control.add_function("play_subtitles", play_subtitles)
+
+def pause_subtitles():
+    """Play the subtitles"""
+    obsc_stream.pause_subtitles()
+    gui.message("Pausing subtitles")
+obs_control.add_function("pause_subtitles", pause_subtitles)
+
+def clear_subtitles():
+    """Clear the subtitles"""
+    obsc_stream.clear_subtitles_queue()
+    gui.window['subtitles'].update(value="")
+    gui.window['upcoming_subtitles'].update(value="")
+    obsc_stream.add_empty_subtitles()
+obs_control.add_function("clear_subtitles", clear_subtitles)
 
 def start_schedule_gui(window):
     window['start_stop_schedule'].update(text=gui.stop_message, button_color='red')
@@ -81,10 +102,14 @@ def orchestrator_loop():
             print(config.get_config_value("max_rand"))
             gui.message(result)
         elif event == "set_blank_hold":
+            # TODO these should get consolidated into a single function
             result = obsc_stream.set_subtitle_blank_hold(values["blank_hold"])
             gui.message(result)
         elif event == "set_interstitial_time":
             result = obs_control.obsc_stream.set_config_value_from_gui("interstitial_time", values["interstitial_time"])
+            gui.message(result)
+        elif event == "set_min_delay":
+            result = obs_control.obsc_stream.set_config_value_from_gui("min_delay", float(values["min_delay"]))
             gui.message(result)
         elif event == "start_stop_schedule":
             start_stop_schedule(window)

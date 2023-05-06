@@ -68,6 +68,7 @@ def is_driver(data):
 
 @sio.event
 def update_subtitles(data):
+    
     did_update = False
     driver, message = is_driver(data)
     print("driver", driver, "message", message)
