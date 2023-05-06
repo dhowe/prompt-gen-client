@@ -38,20 +38,23 @@ class Show:
         content += f" Interstitial: {self.obs_scene_changes['interstitial']}"
         return content
     
-    def _update_json(self):
+    def _update_json(self, do_message=False):
+        if do_message:
+            gui.message(f"Updating json for {self.link}")
+
         if self.link:
             self.json, message = drive_files.get_json_data(self.link)
         else:
             self.json = None
             message = "No show link"
 
-        gui.message(message + f" for {self.link}")
+        if do_message:
+            gui.message(message + f" for {self.link}")
 
     def start(self):
         self.did_start = True
 
-        if not self.json:
-            self._update_json()
+        self._update_json(do_message=True)
         
         if self.json:
             gui.update_timer(f"Starting show {self.name}")
@@ -65,6 +68,8 @@ class Show:
                 message = f"Failed to start {self.data['Name']}"
         else:
             message = "No json found for", self.link
+        
+        obs_control.obsc_stream.clear_subtitles_queue()
 
         gui.do_scene_cut(
             self.obs_scene_changes["stream"], 
