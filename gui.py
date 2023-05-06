@@ -83,6 +83,7 @@ input_size = (40, 2)
 full_size = size =(label_size[0] + input_size[0], label_size[1])
 biggest_size = (45, 4)
 subtitles_size = (50, 3)
+column_size = (40, 6)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
@@ -133,11 +134,6 @@ main_tab = [
         sg.Button("Check for shows", key="update_sheet"),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
-    [
-        # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
-        sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
-        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
-    ],
     # function_buttons,
 ]
 
@@ -174,19 +170,36 @@ layout = [
             sg.Tab('Scene Settings', scene_settings),
         ]])
     ],
+    [sg.Text("No dashboard connected", key="timer_label", size=label_size, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
+    [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
     [
-        sg.Frame("Upcoming Shows", [
-            [sg.Text("No dashboard connected", key="timer_label", size=label_size, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
-            [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
-            [sg.Text("Current Show", size=label_size), sg.Text(key="current_show", size=input_size, expand_x=True)],
-            [sg.Text("Next Show", size=label_size), sg.Text(key="next_show", size=input_size, expand_x=True)],
-            [sg.Multiline("", key='upcoming_shows', size=biggest_size, expand_x=True)],
-        ], expand_x=True, expand_y=True),
+        sg.Column([
+            [sg.Text("Current Show")],
+            [sg.Text(key="current_show", size=label_size, expand_x=True)]
+        ], expand_x=True),
+        sg.Column([
+            [sg.Text("Next show")],
+            [sg.Text(key="next_show", size=label_size, expand_x=True)]
+            ,
+        ], expand_x=True),
     ],
-    
+    [
+        sg.Column([
+            [sg.Text("Upcoming Shows")],
+            [sg.Text("", key='upcoming_shows', size=column_size, expand_x=True, expand_y=True)],
+        ], expand_x=True, scrollable=True,  vertical_scroll_only=True),
+        sg.Column([
+            [sg.Text("", key="subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 20), justification='center')],
+            [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12), justification='center')],
+        ], expand_x=True, scrollable=True,  vertical_scroll_only=True),
+    ],
+    [
+        # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
+        sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
+        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
+    ],
     [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=biggest_size, expand_x=True, expand_y=True)],
-    [sg.Text("", key="subtitles", size=subtitles_size, expand_x=True, expand_y=True, font=('Helvetica', 20), justification='center')],
-   ]
+]
 
 window = sg.Window("BeetleChat Stream", layout, resizable=True)
 

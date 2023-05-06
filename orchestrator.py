@@ -16,8 +16,12 @@ dashboard_socket.update_driver(gui.default_driver, gui.default_driver_pass)
 schedule = shows.schedule
 
 # Set the GUI callback for updating the subtitles
-def on_subtitles(text):
+def on_subtitles(text, upcoming_list):
     window['subtitles'].update(value=text)
+    print(upcoming_list)
+    if upcoming_list:
+        upcoming = "\n".join(upcoming_list)
+        window["upcoming_subtitles"].update(value=upcoming)
 obsc_stream.on_subtitles_update = on_subtitles
 
 def technical():

@@ -40,11 +40,19 @@ class OBSController:
         self.max_rand = config.get_config_value("max_rand", 5)
         self.default_word_count = 20
         self.interstitial_time = config.get_config_value("interstitial_time", 30)
-        self.on_subtitles_update = lambda x: None # a callback that gets called whenver a new subtitle is displayed
+        
+        self.on_subtitles_update = lambda x, y: None # a callback that gets called whenver a new subtitle is displayed
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
+        self.subtitles_on = True
         self.subtitles_thread.start()
 
         self.max_line_chars = 60
+    
+    def play_subtitles(self):
+        self.subtitles_on = True
+
+    def pause_subtitles(self):
+        self.subtitles_on = False
 
     def set_subtitle_sleep_time(self, words_per_second):
         try:
@@ -78,28 +86,31 @@ class OBSController:
 
     def subtitles_process(self):
         while True:
-            try:
-                if self.subtitles_queue.empty():
-                    pass
-                text, words = self.subtitles_queue.get()
-                if text is None:
-                    # A blank hold
-                    text = ""
-                    delay = words
-                else:
-                    delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
-                    rand_delay = randint(0, self.max_rand)
-                    delay = delay + rand_delay
+            # try:
+            if not self.subtitles_on:
+                continue
 
-                self.change_text(self.dialogue_text_field, text)
-                self.on_subtitles_update(text) # Update the GUI
-                
-                # print(f"sleeping for total {delay + rand_delay} delay {delay} + rand {rand_delay}  self.max_rand {self.max_rand} min delay {self.min_delay}")
-                time.sleep(delay + rand_delay)
-            except Exception as e:
-                print("Error with subtitles_process", e)
-                
+            if self.subtitles_queue.empty():
+                pass
+            text, words = self.subtitles_queue.get()
+            if text is None:
+                # A blank hold
+                text = ""
+                delay = words
+            else:
+                delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
+                rand_delay = randint(0, self.max_rand)
+                delay = delay + rand_delay
 
+            self.change_text(self.dialogue_text_field, text)
+            upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
+            self.on_subtitles_update(text, upcoming) # Update the GUI
+            
+            # print(f"sleeping for total {delay + rand_delay} delay {delay} + rand {rand_delay}  self.max_rand {self.max_rand} min delay {self.min_delay}")
+            time.sleep(delay + rand_delay)
+            # except Exception as e:
+            #     print("Error with subtitles_process", e)
+                
     def clear_subtitles_queue(self):
         self.subtitles_queue = queue.Queue()
         
@@ -141,7 +152,7 @@ class OBSController:
                 for broken_line in broken_lines:
                     words = self.get_words(broken_line)
                     self.subtitles_queue.put((broken_line, words))
-                    # print(f"Putting {broken_line} into the queue, {words} words")
+                    print(f"Putting {broken_line} into the queue, {words} words")
             
             # Hold the last one a bit longer
             # last_extra_word_proxy = randint(*self.last_message_extra_words)
@@ -216,6 +227,7 @@ class OBSController:
         return connected, message
 
     def change_text(self, name, new_text):
+        print("CHANGE TEXT", name, new_text)
         try:
             settings = self.cl.get_input_settings(name).input_settings
             settings['text'] = new_text

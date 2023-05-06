@@ -70,6 +70,7 @@ def is_driver(data):
 def update_subtitles(data):
     did_update = False
     driver, message = is_driver(data)
+    print("driver", driver, "message", message)
     if driver:
         try:
             messages = data.get("data", [])
