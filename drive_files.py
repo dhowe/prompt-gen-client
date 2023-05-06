@@ -34,6 +34,7 @@ def get_json_data(filename):
     try:
         # Use the Drive API client to download the file
         file = drive_service.files().get(fileId=file_id).execute()
+        print(file)
         file_name = file['name']
         file_content = io.BytesIO()
         request = drive_service.files().get_media(fileId=file_id)

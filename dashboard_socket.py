@@ -1,7 +1,7 @@
+import json, time
 import socketio
 import gui
 import config
-import time
 from obs_control import send_subtitles
 
 sio = socketio.Client()
@@ -66,33 +66,15 @@ def is_driver(data):
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 
-# @sio.event
-# def update_topic(data):
-#     updated = False
-#     driver, message = is_driver(data)
-#     field = "topic"
-#     if driver:
-#         try:
-#             message = change_text(field, data.get("content", ""))
-#             updated = True
-#         except Exception as e:
-#             message = str(e)
-#             print(message)
-#     sio.emit('text_updated', {'updated': updated, 'message': message, "field": field})
-
-
 @sio.event
 def update_subtitles(data):
     did_update = False
     driver, message = is_driver(data)
-    print("DEBUG", driver, "MESSAGE", message)
     if driver:
         try:
             messages = data.get("data", [])
             message_contents = [message.get("content", "") for message in messages]
-            print("DEBUG SENDING SUBTITLES")
             did_update, message = send_subtitles(message_contents)
-            print("DEBUG SENT:", did_update, message)
         except Exception as e:
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})
@@ -115,6 +97,15 @@ def update_driver(driver, password):
 # Events we emit
 def start_show(scene_json):
     if sio.connected:
+        try:
+            scene_json = json.loads(scene_json)
+            scene_json["uistate"]["automode"] = True
+            scene_json = json.dumps(scene_json)
+        except Exception as e:
+            message = "Error failed to start show: "+ str(e)
+            print("ERROR", message)
+            gui.message(message)
+
         sio.emit('load_scene', {'scene_json': scene_json})
     
 def stop_show():

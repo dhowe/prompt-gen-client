@@ -94,8 +94,7 @@ class OBSController:
                 self.change_text(self.dialogue_text_field, text)
                 self.on_subtitles_update(text) # Update the GUI
                 
-                print(text)
-                print(f"sleeping for total {delay + rand_delay} delay {delay} + rand {rand_delay}  self.max_rand {self.max_rand} min delay {self.min_delay}")
+                # print(f"sleeping for total {delay + rand_delay} delay {delay} + rand {rand_delay}  self.max_rand {self.max_rand} min delay {self.min_delay}")
                 time.sleep(delay + rand_delay)
             except Exception as e:
                 print("Error with subtitles_process", e)
@@ -142,7 +141,7 @@ class OBSController:
                 for broken_line in broken_lines:
                     words = self.get_words(broken_line)
                     self.subtitles_queue.put((broken_line, words))
-                    print(f"Putting {broken_line} into the queue, {words} words")
+                    # print(f"Putting {broken_line} into the queue, {words} words")
             
             # Hold the last one a bit longer
             # last_extra_word_proxy = randint(*self.last_message_extra_words)
@@ -202,7 +201,6 @@ class OBSController:
             return combined
         
         output = iterate_by_two(lines)
-        print(output)
         return output
 
 
@@ -264,7 +262,6 @@ class Scenes:
         scene = cur_scene.current_program_scene_name
 
         new = scenes[self.i % n]
-        print("Switching to new scene:", new)
         if new != scene:
             self.obsc.cl.set_current_program_scene(new['sceneName'])
             return f"Switching to new scene {new}"
@@ -292,7 +289,6 @@ def show_inputs():
 
 def show_texts():
     inputs = obsc_stream.cl.get_input_list().inputs
-    print(inputs)
     texts = [i for i in inputs if 'text' in i['inputKind']]
     texts = [source['inputName'] for source in texts]
     return texts

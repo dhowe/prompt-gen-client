@@ -138,7 +138,7 @@ main_tab = [
         sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
     ],
-    # function_buttons,
+    function_buttons,
 ]
 
 subtitle_settings = [
@@ -259,6 +259,7 @@ def do_scene_cut(stream=None, background=None, interstitial=None):
     current_obs_scene(scene_message)
     message(scene_message)
 
+
 def event_loop(window):
     while True:
         event, values = event_queue.get()
@@ -282,5 +283,3 @@ def event_loop(window):
             update_shows(next=next, upcoming=values[1])
         elif event == sg.WIN_CLOSED:
             break
-
-        # print(event, values)

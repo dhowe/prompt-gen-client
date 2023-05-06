@@ -70,6 +70,7 @@ class Show:
             self.obs_scene_changes["stream"], 
             self.obs_scene_changes["background"]
         )
+        gui.message(message)
 
     def interstitial(self):
         self.did_interstitial = True
