@@ -138,7 +138,7 @@ main_tab = [
         sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
     ],
-    function_buttons,
+    # function_buttons,
 ]
 
 subtitle_settings = [
@@ -258,28 +258,3 @@ def do_scene_cut(stream=None, background=None, interstitial=None):
     )
     current_obs_scene(scene_message)
     message(scene_message)
-
-
-def event_loop(window):
-    while True:
-        event, values = event_queue.get()
-        if event in available_function_dict.keys():
-            function = available_function_dict[event]
-            num_params = len(inspect.signature(function).parameters)
-            if num_params == 2:
-                result = function(values["field"], values["value"])
-            elif num_params == 1:
-                result = function(values["value"])
-            else:
-                result = function()
-
-            update_output(window, result)
-            # Send the result back to the main thread
-            event_queue.put(("update_output", result))
-        elif event == "new_next_show":
-            next = values[0]
-            upcoming = values[1]
-            upcoming = upcoming[1:] if len(upcoming) > 1 else []
-            update_shows(next=next, upcoming=values[1])
-        elif event == sg.WIN_CLOSED:
-            break

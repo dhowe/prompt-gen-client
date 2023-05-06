@@ -293,9 +293,6 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
-def technical():
-    return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
-
 def starting_soon():
    return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Starting Soon"))
 
@@ -319,3 +316,6 @@ not_clickable = ["is_text", "update_output", "debug"]
 available_functions = [(name, func) for name, func in globals().items() if
                        callable(func) and not name.startswith("_") and name not in not_clickable]
 available_function_dict = dict(available_functions)
+def add_function(name, func):
+    available_functions.append((name, func))
+    available_function_dict[name] = func

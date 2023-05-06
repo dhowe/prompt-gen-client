@@ -22,7 +22,7 @@ class Show:
             "background": data.get("Background Scene"),
             "interstitial": data.get("Interstitial Scene"),
         }
-        self.link = data['Link']
+        self.link = data.get('Link')
 
         self.json = None
         if get_json_data:
@@ -54,7 +54,7 @@ class Show:
     def start(self):
         self.did_start = True
 
-        self._update_json(do_message=True)
+        self._update_json(do_message=True) # Just in case it changed
         
         if self.json:
             gui.update_timer(f"Starting show {self.name}")
@@ -94,11 +94,10 @@ class ShowScheduleState:
         self.countdown_actions = {}
 
     def toggle(self):
-        self.on = not self.on
-        if self.on:
+        if not self.on:
             self.begin_schedule()
         else:
-            self.end_schedule()
+            self.stop_schedule()
         return self.on
     
     def set_next_show(self, next_show, upcoming_shows=None):
@@ -121,22 +120,31 @@ class ShowScheduleState:
     
     def begin_schedule(self):
         self.timer_thread = threading.Thread(target=self.start_timer)
+        self.on = True
         self.timer_thread.start()
 
-    def end_schedule(self):
+    def stop_schedule(self):
+        # TODO rename stop_schedule
         # terminate timer thread
-        self.timer_thread.join()
-        self.clear()
+        if self.timer_thread:
+            self.on = False
+            self.timer_thread.join()
+            self.clear()
 
     def clear(self):
         gui.update_timer(None)
         obs_control.obsc_stream.clear_subtitles_queue()
+
+
+    def update_gui_timer(self, value):
+        gui.event_queue.put(("update_timer", time.time()))
 
     def start_timer(self):
         # record the time
         start_time = time.time()
 
         countdown = self.get_time_until_next_show()
+
         gui.update_shows(next=self.next_show, upcoming=self.upcoming_shows) # update the GUI
         i = 0
         while self.on:
@@ -165,7 +173,7 @@ class ShowScheduleState:
             #     if countdown <= advance_time:
             #         action()
 
-            time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second
+            time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second 
 
 schedule = ShowScheduleState()
 
