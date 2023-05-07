@@ -168,7 +168,12 @@ scene_settings = [
     [
         sg.Text("Interstitial scene duration", size=label_size, expand_x=True),
         sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label, expand_x=True),
-        sg.Button("Set Interstitial Time", key="set_interstitial_scene")
+        sg.Button("Set interstitial duration", key="set_interstitial_scene")
+    ],
+    [
+        sg.Text("Starting soon / title scene duration", size=label_size, expand_x=True),
+        sg.InputText(config.get_config_value("starting_soon_time"), key="starting_soon_time", size=small_label, expand_x=True),
+        sg.Button("Set title duration", key="set_starting_soon_time")
     ],
 ]
 

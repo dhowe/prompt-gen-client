@@ -14,13 +14,14 @@ TIMEZONE = config.get_config_value("timezone")
 class Show:
     def __init__(self, data, get_json_data=True):
         self.data = data
-        self.name = data.get("Name", "Name missing")
+        self.name = data.get("ShowName", "ShowName missing")
         self.date = data.get("Date", "Date missing")
         self.time = data.get("Time", "Time missing")
         self.obs_scene_changes = {
             "stream": data.get("Stream Scene"),
             "background": data.get("Background Scene"),
             "interstitial": data.get("Interstitial Scene"),
+            "starting_soon": config.get_config_value("starting_soon_scene"),
         }
         self.link = data.get('Link')
 
@@ -30,6 +31,7 @@ class Show:
 
         self.did_start = False
         self.did_interstitial = False
+        self.did_starting_soon = False
 
     def __repr__(self):
         content = f"{self.name} at {self.time}"
@@ -62,17 +64,17 @@ class Show:
             start_show(self.json)
             time.sleep(1) # wait for the dashboard to respond
             if responses['load_scene_recieved'] > count:
-                message = f"Started {self.data['Name']}"
+                message = f"Started {self.data.get('ShowName')}"
             else:
-                message = f"Failed to start {self.data['Name']}"
+                message = f"Failed to start {self.data.get('ShowName')}"
         else:
             message = "No json found for", self.link
         
         obs_control.obsc_stream.clear_subtitles_queue()
 
         gui.do_scene_cut(
-            self.obs_scene_changes["stream"], 
-            self.obs_scene_changes["background"]
+            stream=self.obs_scene_changes["stream"], 
+            background=self.obs_scene_changes["background"]
         )
         gui.message(message)
 
@@ -80,6 +82,11 @@ class Show:
         self.did_interstitial = True
         scene = self.obs_scene_changes["interstitial"]
         gui.do_scene_cut(interstitial=scene)
+
+    def starting_soon(self):
+        self.did_starting_soon = True  
+        gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
+        obs_control.obsc_stream.populate_text_boxes(self.data) # any of the rows in the sheet can be used as a source of text
 
 class ShowScheduleState:
     def __init__(self) -> None:
@@ -99,7 +106,7 @@ class ShowScheduleState:
             self.stop_schedule()
         return self.on
     
-    def set_next_show(self, next_show, upcoming_shows=None):
+    def set_next_show(self, next_show: Show, upcoming_shows=None):
         self.next_show = next_show
         if upcoming_shows:
             self.upcoming_shows = upcoming_shows
@@ -123,7 +130,6 @@ class ShowScheduleState:
         self.timer_thread.start()
 
     def stop_schedule(self):
-        # TODO rename stop_schedule
         # terminate timer thread
         if self.timer_thread:
             self.on = False
@@ -134,18 +140,11 @@ class ShowScheduleState:
         gui.update_timer(None)
         obs_control.obsc_stream.clear_subtitles_queue()
 
-
-    def update_gui_timer(self, value):
-        gui.event_queue.put(("update_timer", time.time()))
-
     def start_timer(self):
-        # record the time
         start_time = time.time()
-
         countdown = self.get_time_until_next_show()
 
         gui.update_shows(next=self.next_show, upcoming=self.upcoming_shows) # update the GUI
-        i = 0
         while self.on:
             if countdown is None:
                 return
@@ -153,8 +152,12 @@ class ShowScheduleState:
             if countdown < pd.Timedelta(seconds=0):
                 countdown = pd.Timedelta(seconds=0)
 
-            # check if it is less than a second until the next show
-            if countdown <= pd.Timedelta(seconds=1):
+            start_show_time = 1
+            starting_soon_time = obs_control.obsc_stream.starting_soon_time
+            interstitial_time = obs_control.obsc_stream.interstitial_time + starting_soon_time
+
+            # Do the things that need to get done before or at the show
+            if countdown <= pd.Timedelta(seconds=start_show_time):
                 if not self.next_show.did_start: # if the show hasn't been attempted to start yet
                     self.next_show.start()
                     # Not sure that these should go here...
@@ -166,14 +169,18 @@ class ShowScheduleState:
                         next=self.upcoming_shows[1] if len(self.upcoming_shows) > 1 else None, 
                         upcoming=self.upcoming_shows[2:]
                     )
-            elif countdown <= pd.Timedelta(seconds=obs_control.obsc_stream.interstitial_time):
+            elif countdown <= pd.Timedelta(seconds=starting_soon_time):
+                if not self.next_show.did_starting_soon:
+                    self.next_show.starting_soon()
+            elif countdown <= pd.Timedelta(seconds=interstitial_time):
                 if not self.next_show.did_interstitial:
                     self.next_show.interstitial()
 
             gui.update_timer(countdown)
 
             # for name, (advance_time, action) in self.countdown_actions.items():
-            #     if countdown <= advance_time:
+            #     print(name, advance_time)
+            #     if countdown <= pd.Timedelta(seconds=advance_time):
             #         action()
 
             time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second 

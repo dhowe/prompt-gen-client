@@ -107,6 +107,9 @@ def orchestrator_loop():
         elif event == "set_interstitial_time":
             result = obs_control.obsc_stream.set_config_value_from_gui("interstitial_time", values["interstitial_time"])
             gui.message(result)
+        elif event == "set_starting_soon_time":
+            result = obs_control.obsc_stream.set_config_value_from_gui("starting_soon_time", values["starting_soon_time"])
+            gui.message(result)
         elif event == "set_min_delay":
             result = obs_control.obsc_stream.set_config_value_from_gui("min_delay", float(values["min_delay"]))
             gui.message(result)

@@ -38,8 +38,8 @@ class OBSController:
         self.min_delay = config.get_config_value("min_delay", 3)
         self.blank_hold = config.get_config_value("blank_hold", 0)
         self.max_rand = config.get_config_value("max_rand", 5)
-        self.default_word_count = 20
-        self.interstitial_time = config.get_config_value("interstitial_time", 30)
+        self.interstitial_time = float(config.get_config_value("interstitial_time", 30))
+        self.starting_soon_time = float(config.get_config_value("starting_soon_time", 10))
         
         self.on_subtitles_update = lambda x, y: None # a callback that gets called whenver a new subtitle is displayed
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
@@ -47,6 +47,11 @@ class OBSController:
         self.subtitles_thread.start()
 
         self.max_line_chars = 60
+
+    def populate_text_boxes(self, text_box_data):
+        """text_box_data: a dictionary of text box names and their values"""
+        for name, value in text_box_data.items():
+            self.change_text(name, value)
     
     def play_subtitles(self):
         self.subtitles_on = True
@@ -94,38 +99,37 @@ class OBSController:
 
     def subtitles_process(self):
         while True:
-            # try:
-            if not self.subtitles_on:
-                continue
+            try:
+                if not self.subtitles_on:
+                    continue
 
-            if self.subtitles_queue.empty():
-                print("empty queue", time.time())
-                pass
+                if self.subtitles_queue.empty():
+                    print("empty queue", time.time())
+                    pass
 
-            text, words = self.subtitles_queue.get()
-            if text is None:
-                # A blank hold
-                text = ""
-                delay = words
-            else:
-                delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
-                rand_delay = randint(0, self.max_rand)
-                delay = delay + rand_delay
+                text, words = self.subtitles_queue.get()
+                if text is None:
+                    # A blank hold
+                    text = ""
+                    delay = words
+                else:
+                    delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
+                    rand_delay = randint(0, self.max_rand)
+                    delay = delay + rand_delay
 
-            print("changing", text)
-            self.change_text(self.dialogue_text_field, text)
-            upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
-            self.on_subtitles_update(text, upcoming) # Update the GUI
-            
-            time.sleep(delay + rand_delay)
-            # except Exception as e:
-            #     print("Error with subtitles_process", e)
+                self.change_text(self.dialogue_text_field, text)
+                upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
+                self.on_subtitles_update(text, upcoming) # Update the GUI
+                
+                time.sleep(delay + rand_delay)
+            except Exception as e:
+                print("Error with subtitles_process", e)
                 
     def clear_subtitles_queue(self):
         # self.subtitles_queue = queue.Queue()
         with self.subtitles_queue.mutex:
             self.subtitles_queue.queue.clear()
-            
+
         
     def _write_settings(self, ip, port, password):
         config.write_config_value(f"{self.name}_obs_ip", ip)
@@ -188,12 +192,6 @@ class OBSController:
     def add_empty_subtitles(self):
         self.subtitles_queue.put((None, float(self.blank_hold)))
     
-    def default_reading_time(self):
-        return max(
-            self.min_delay, 
-            self.get_reading_speed(self.default_word_count, self.words_per_second)
-        )
-    
     def get_reading_speed(self, word_count, words_per_second):
         try:
             speed = word_count / words_per_second
@@ -240,15 +238,15 @@ class OBSController:
         return connected, message
 
     def change_text(self, name, new_text):
-        print("CHANGE TEXT", name, new_text)
         try:
             settings = self.cl.get_input_settings(name).input_settings
             settings['text'] = new_text
             self.cl.set_input_settings(name, settings, False)
-            return f"'{name}' changed to '{new_text}'."
+            message = f"'{name}' changed to '{new_text}'."
         except:
-            msg = f"Failed to change '{name}' to '{new_text}'.\n"
-            msg += "Available text sources: " + " ".join(show_texts())
+            message = f"Failed to change '{name}' to '{new_text}'.\n"
+            message += "Available text sources: " + " ".join(show_texts())
+        return message
 
     def get_valid_scene_names(self):
         if self.connected:
@@ -318,8 +316,8 @@ def show_texts():
     texts = [source['inputName'] for source in texts]
     return texts
 
-def starting_soon():
-   return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Starting Soon"))
+# def starting_soon():
+#    return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Title Card Scene"))
 
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)
