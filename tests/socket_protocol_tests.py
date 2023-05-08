@@ -7,10 +7,10 @@ import socketio
 socket_io = socketio.Client()
 
 driver_uid = 'test@test.com'
-#driver_uid = "alex.calderwood@tenderclaws.com"
+# driver_uid = "alex.calderwood@tenderclaws.com"
 
 dashboard_url = 'ws://localhost:5000'
-# dashboard_url = 'ws://192.241.209.27:5050/'  #
+dashboard_url = 'ws://192.241.209.27:5050/'  #
 
 responses = {
     'load_scene_recieved': False,
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # load json scene file
     file_name = 'test_scene.json'
     scene_json = open(os.path.dirname(__file__) + f'/../{file_name}').read()
-    socket_io.emit('load_scene', {'scene_json': scene_json, 'scene_name': 'test_scene.json'})
+    socket_io.emit('load_scene', {'scene_json': scene_json, 'scene_name': file_name})
     print(f'sent /load_scene {file_name}')
 
     # verify we've load scene file
