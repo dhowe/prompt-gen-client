@@ -1,17 +1,9 @@
-import obsws_python as obs
-import PySimpleGUI as sg # https://python.libhunt.com/pysimplegui-alternatives
-
-import inspect
-import multiprocessing as mp
 import queue, threading, time
 import config
+from random import randint
+import obsws_python as obs 
+# Reference: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
 
-# Create a queue to communicate between threads
-event_queue = queue.Queue()
-
-default_driver = config.get_config_value("dashboard_user")
-default_driver_pass = config.get_config_value("dashboard_password", "")
-default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Shows")
 
 def debug(text):
     # make colorful and styled text
@@ -41,31 +33,104 @@ class OBSController:
         self.connected = False
 
         self.subtitles_queue = queue.Queue()
-        self.words_per_second = 3
-        self.min_delay = 2
-        self.default_reading_time = max(self.min_delay, 20 / self.words_per_second)
+        self.default_words_per_second = 3
+        self.words_per_second = self.default_words_per_second
+        self.min_delay = config.get_config_value("min_delay", 3)
+        self.blank_hold = config.get_config_value("blank_hold", 0)
+        self.max_rand = config.get_config_value("max_rand", 5)
+        self.interstitial_time = float(config.get_config_value("interstitial_time", 30))
+        self.starting_soon_time = float(config.get_config_value("starting_soon_time", 10))
+        
+        self.on_subtitles_update = lambda x, y: None # a callback that gets called whenver a new subtitle is displayed
         self.subtitles_thread = threading.Thread(target=self.subtitles_process)
+        self.subtitles_on = True
         self.subtitles_thread.start()
 
         self.max_line_chars = 60
 
+    def populate_text_boxes(self, text_box_data):
+        """text_box_data: a dictionary of text box names and their values"""
+        for name, value in text_box_data.items():
+            self.change_text(name, value)
+    
+    def play_subtitles(self):
+        self.subtitles_on = True
+
+    def pause_subtitles(self):
+        self.subtitles_on = False
+
     def set_subtitle_sleep_time(self, words_per_second):
         try:
-            self.words_per_second = min(3000, float(words_per_second))
-            return f"Subtitle delay set to {self.words_per_second}s"
+            self.words_per_second = float(words_per_second)
+            return f"Reading speed set to {self.words_per_second} words per second."
         except ValueError:
             return "Unable to set sleep time. Please enter a number."
         
+    def set_subtitle_max_rand_delay(self, max_rand):
+        try:
+            self.words_per_second = float(max_rand)
+            return f"Maximum random range set to {self.words_per_second} seconds."
+        except ValueError:
+            return "Unable to set sleep time. Please enter a number."
+
+    def set_subtitle_blank_hold(self, blank_hold):
+        try:
+            self.blank_hold = float(blank_hold)
+            return f"Blank hold time set to {self.blank_hold} seconds."
+        except ValueError:
+            return "Unable to set random range time. Please enter a number."
+        
+    
+    def set_subtitle_blank_hold(self, blank_hold):
+        try:
+            self.blank_hold = float(blank_hold)
+            return f"Blank hold time set to {self.blank_hold} seconds."
+        except ValueError:
+            return "Unable to set random range time. Please enter a number."
+        
+    def set_config_value_from_gui(self, key, value):
+        try:
+            # see if self has a variable 'key'
+            setattr(self, key, value)
+            config.write_config_value(key, value)
+            return f"Set {key} to {value}"
+        except AttributeError:
+            return f"Unable to set {key} to {value}"
+
     def subtitles_process(self):
         while True:
             try:
-                text, delay = self.subtitles_queue.get(timeout=1)
+                if not self.subtitles_on:
+                    continue
+
+                if self.subtitles_queue.empty():
+                    print("empty queue", time.time())
+                    pass
+
+                text, words = self.subtitles_queue.get()
+                if text is None:
+                    # A blank hold
+                    text = ""
+                    delay = words
+                else:
+                    delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
+                    rand_delay = randint(0, self.max_rand)
+                    delay = delay + rand_delay
+
                 self.change_text(self.dialogue_text_field, text)
-                window['subtitles'].update(value=text)
-                time.sleep(delay)
-            except queue.Empty:
-                pass
-    
+                upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
+                self.on_subtitles_update(text, upcoming) # Update the GUI
+                
+                time.sleep(delay + rand_delay)
+            except Exception as e:
+                print("Error with subtitles_process", e)
+                
+    def clear_subtitles_queue(self):
+        # self.subtitles_queue = queue.Queue()
+        with self.subtitles_queue.mutex:
+            self.subtitles_queue.queue.clear()
+
+        
     def _write_settings(self, ip, port, password):
         config.write_config_value(f"{self.name}_obs_ip", ip)
         config.write_config_value(f"{self.name}_obs_port", port)
@@ -99,16 +164,19 @@ class OBSController:
     def queue_subtitles(self, lines):
         sent = False
         if self.connected:
-            print("connected", self.connected)
-            # text = "\n".join(lines)
             for line in split_new_lines(lines):
                 broken_lines = self.split_long_lines(line)
                 for broken_line in broken_lines:
-                    reading_time = self.get_reading_speed(broken_line)
-                    self.subtitles_queue.put((broken_line, reading_time))
+                    words = self.get_words(broken_line)
+                    self.subtitles_queue.put((broken_line, words))
+                    print(f"Putting {broken_line} into the queue, {words} words")
             
+            # Hold the last one a bit longer
+            # last_extra_word_proxy = randint(*self.last_message_extra_words)
+            # self.subtitles_queue.put((broken_line, last_extra_word_proxy))
+
             # Timeout the very last subtitle at the end
-            self.subtitles_queue.put(("\n\n", self.default_reading_time))
+            self.add_empty_subtitles()
             
             sent = True
             message = "Subtitles sent to OBS"
@@ -116,11 +184,20 @@ class OBSController:
             message = "Error: OBS Controller not connected"
         return sent, message
     
-    def get_reading_speed(self, text):
-        words = len(text.split())
-        speed = words / self.words_per_second
-        final = max(self.min_delay, speed)
-        return final
+    def get_words(self, text):
+        if text:
+            return len(text.split())
+        return 0
+
+    def add_empty_subtitles(self):
+        self.subtitles_queue.put((None, float(self.blank_hold)))
+    
+    def get_reading_speed(self, word_count, words_per_second):
+        try:
+            speed = word_count / words_per_second
+        except ZeroDivisionError:
+            speed = word_count / self.default_words_per_second
+        return speed
 
     def split_long_lines(self, text):
         # Split the into a max character length by word
@@ -145,7 +222,8 @@ class OBSController:
                     combined.append(lines[i] + "\n")
             return combined
         
-        return iterate_by_two(lines)
+        output = iterate_by_two(lines)
+        return output
 
 
     def update_topic(self, new_topic):
@@ -157,7 +235,6 @@ class OBSController:
         if connected:
             self._write_settings(ip, port, password)
             
-        window[f"{self.name}_connected"].update(message)
         return connected, message
 
     def change_text(self, name, new_text):
@@ -165,14 +242,33 @@ class OBSController:
             settings = self.cl.get_input_settings(name).input_settings
             settings['text'] = new_text
             self.cl.set_input_settings(name, settings, False)
-            return f"'{name}' changed to '{new_text}'."
+            message = f"'{name}' changed to '{new_text}'."
         except:
-            msg = f"Failed to change '{name}' to '{new_text}'.\n"
-            msg += "Available text sources: " + " ".join(show_texts())
+            message = f"Failed to change '{name}' to '{new_text}'.\n"
+            message += "Available text sources: " + " ".join(show_texts())
+        return message
 
-    def change_scene(self, name):
-        pass # TODO
+    def get_valid_scene_names(self):
+        if self.connected:
+            return [s['sceneName'] for s in self.cl.get_scene_list().scenes]
+        return []
 
+    def cut_to_scene(self, scene):
+        if not self.connected:
+            return f"OBS {self.name.title()}: not connected"
+            
+        if not scene:
+            try:
+                scene = self.cl.get_current_program_scene().current_program_scene_name
+            except Exception as e:
+                return f"OBS {self.name.title()}: errror {e}"
+            return f"OBS {self.name.title()}: {scene}"
+
+        valid = [scene.lower() for scene in self.get_valid_scene_names()]
+        if scene.lower() not in valid:
+            return f"{scene} must be one of: {' '.join(valid)}"
+        self.cl.set_current_program_scene(scene)
+        return f"OBS {self.name.title()}: {scene}"
 
 class Scenes:
     def __init__(self, obs_state):
@@ -189,49 +285,18 @@ class Scenes:
         scene = cur_scene.current_program_scene_name
 
         new = scenes[self.i % n]
-        print("Switching to new scene:", new)
         if new != scene:
             self.obsc.cl.set_current_program_scene(new['sceneName'])
             return f"Switching to new scene {new}"
         else:
             return None
-        
+
+
 obsc_stream = OBSController("stream")
 obsc_background =  OBSController("background")
 
-scenes = Scenes(obsc_stream)
-
-
-
 def is_text(item):
     return 'text' in item['inputKind']
-
-def update_timer(time_until_show):    
-    if not time_until_show:
-        window['timer'].update("")
-        return
-
-    try:
-        days, remainder = divmod(time_until_show.seconds, 86400)
-        hours, remainder = divmod(remainder, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        
-        # Create the timer string
-        timer_str = ''
-        if time_until_show.days > 0:
-            timer_str += f'{time_until_show.days} day'
-            if time_until_show.days > 1:
-                timer_str += 's'
-            timer_str += ' '
-        if hours > 0:
-            timer_str += f'{hours:02d}:'
-        if minutes > 0:
-            timer_str += f'{minutes:02d}:'
-        timer_str += f'{seconds:02d}'
-    except Exception as e:
-        timer_str = str(time_until_show)
-        print(e)
-    window['timer'].update(timer_str)
 
 
 def show_items():
@@ -247,153 +312,33 @@ def show_inputs():
 
 def show_texts():
     inputs = obsc_stream.cl.get_input_list().inputs
-    print(inputs)
     texts = [i for i in inputs if 'text' in i['inputKind']]
     texts = [source['inputName'] for source in texts]
     return texts
 
-
-# Buttons
-def cycle_scenes():
-    scenes.cycle()
-
+# def starting_soon():
+#    return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Title Card Scene"))
 
 def send_subtitles(lines):
     return obsc_stream.queue_subtitles(lines)
 
-def connect_to_obs_stream():
-    window['stream_connected'].update("Connecting...")
-    stream_ip       = window['stream_ip'].get()
-    stream_port     = window['stream_port'].get()
-    stream_password = window['stream_password'].get()
-    connected, message = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
-    window['stream_connected'].update(message)
-    return 'connected', message
-
-def connect_to_obs_background():
-    window['background_connected'].update("Connecting...")
-    background_ip       = window['background_ip'].get()
-    backgorund_port     = window['background_port'].get()
-    backgorund_password = window['background_password'].get()
-    connected, message = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
-    window['background_connected'].update(message)
-    return 'connected', message
-
-
-# Automatically generate buttons based on available functions
-function_buttons = []
-not_clickable = ["is_text", "update_output", "debug"]
-available_functions = [(name, func) for name, func in globals().items() if
-                       callable(func) and not name.startswith("_") and name not in not_clickable] 
-for name, func in available_functions:
-    function_buttons.append(sg.Button(name, key=name, pad=((5, 5), (0, 5))))
-
-
-sg.theme("LightGray1")
-sg.set_options(font=("Helvetica", 16))
-try:
-    sg.set_options(font=("Kailasa", 16))
-except:
-    pass
-
-small_label = (10, 1)
-small2_label = (22, 1)
-label_size = (22, 1)
-input_size = (40, 2)
-full_size = size=(label_size[0] + input_size[0], label_size[1])
-
-start_message, stop_message = "Start Schedule", "Stop Schedule"
-
-layout = [
-    [
-        sg.Frame("OBS Instances", [
-            [
-                sg.Column([
-                    [sg.Text("Stream", size=small_label, expand_x=True)],
-                    [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size, expand_x=True)],
-                    [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_stream.port, key="stream_port", size=input_size, expand_x=True)],
-                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_stream.password, key="stream_password", size=input_size, expand_x=True)],
-                    [sg.Text("", key="stream_connected", expand_x=True), sg.Button("Connect Stream", key="connect_to_obs_stream", pad=((5, 5), (20, 5)))],
-                ], pad=((0, 20), 0)),
-                sg.Column([
-                    [sg.Text("Background", size=small_label, expand_x=True)],
-                    [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_background.ip, key="background_ip", size=input_size, expand_x=True)],
-                    [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_background.port, key="background_port", size=input_size, expand_x=True)],
-                    [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_background.password, key="background_password", size=input_size, expand_x=True)],
-                    [sg.Text("", key="background_connected", expand_x=True), sg.Button("Connect Background", key="connect_to_obs_background", pad=((5, 5), (20, 5)))],
-                ], pad=((20, 0), 0)),
-            ],
-        ], expand_x=True),
-    ],
-    [
-        sg.Text("Driver (Subtitle Display)", size=label_size, expand_x=True), 
-        sg.InputText(default_driver, key="driver_uid", size=input_size, expand_x=True), 
-        sg.InputText(default_driver_pass, key="driver_password",size=input_size, expand_x=True, password_char="*"), 
-        sg.Button("Set Driver", key="update_driver")
-    ],
-    [sg.Text("Reading Speed (words/sec)", size=label_size, expand_x=True), sg.InputText(obsc_stream.words_per_second, key="sleep_time", size=input_size, expand_x=True), sg.Button("Set subtitles delay", key="set_sleep_time")],
-    [sg.Text("Sheet Name", size=full_size), sg.InputText(default_sheet_name, key="sheet", size=input_size, expand_x=True), sg.Button("Set Sheet", key="update_sheet")],
-    [
-        sg.Button("We'll be right back", key="right_back", pad=((5, 5), (0, 5))),
-        sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
-        sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
-        sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
-    ],
-    [sg.Text("Showtime in", size=label_size, expand_x=True), sg.Text("", key="timer", size=input_size, expand_x=True)],
-    [sg.Text("Next Show", size=label_size, expand_x=True), sg.Text(key="next_show", size=input_size, expand_x=True)],
-    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=input_size, expand_x=True)],
-    [sg.Text("", key="subtitles", size=full_size)],
-    # function_buttons
-]
-
-window = sg.Window("BeetleChat Stream", layout, resizable=True)
-
-
-def update_output(window, content):
-    # Display content in output window
-    if content:
-        if isinstance(content, tuple):
-            content = content[1]
-        print("content", str(content))
-        window["output"].update(str(content))
-
-def update_next_show(show):
-    if show and isinstance(show, str):
-        content = show
-    elif show:
-        print("SHOW", show)
-        content = show.get("Name", "Name mising") + " starting at "
-        content += show.get("Date", "Date missing") + " "
-        content += show.get("Time", "Time missing") + " "
-
-    window["next_show"].update(content)
+def cut_to_scene():
+    return obsc_stream.cut_to_scene("Psychedelics")
 
 def secret():
     return obsc_stream.password
 
-def actions():
-    return [x[0] for x in available_functions]
+def cut_to_scenes(stream=None, background=None, interstitial=None):
+    if stream and interstitial:
+        print("WARNING: cut_to_scenes called with both stream and interstitial. Using stream.")
+    m1 = obsc_stream.cut_to_scene(stream) if stream else obsc_stream.cut_to_scene(interstitial)
+    m2 = obsc_background.cut_to_scene(background)
+    return "\n".join([m1, m2])
 
-def event_loop(window):
-    while True:
-        event, values = event_queue.get()
-        if event in actions():
-            function = globals()[event]
-            num_params = len(inspect.signature(function).parameters)
-            if num_params == 2:
-                result = function(values["field"], values["value"])
-            elif num_params == 1:
-                result = function(values["value"])
-            else:
-                result = function()
-
-            update_output(window, result)
-            # Send the result back to the main thread
-            event_queue.put(("update_output", result))
-        elif event == "new_show":
-            update_next_show(values)
-            pass
-        elif event == sg.WIN_CLOSED:
-            break
-
-        print(event, values)
+not_clickable = ["is_text", "update_output", "debug"]
+available_functions = [(name, func) for name, func in globals().items() if
+                       callable(func) and not name.startswith("_") and name not in not_clickable]
+available_function_dict = dict(available_functions)
+def add_function(name, func):
+    available_functions.append((name, func))
+    available_function_dict[name] = func

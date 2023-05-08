@@ -6,9 +6,11 @@ import socketio
 
 socket_io = socketio.Client()
 
-driver_uid = 'test@test.com'  # "adept-dev@tenderclaws.com"
-#dashboard_url = 'ws://192.241.209.27:5050/'
-dashboard_url = 'ws://localhost:5000'
+# driver_uid = 'test@test.com'
+driver_uid = "alex.calderwood@tenderclaws.com"
+
+# dashboard_url = 'ws://localhost:5000'
+dashboard_url = 'ws://192.241.209.27:5050/'  #
 
 responses = {
     'load_scene_recieved': False,
@@ -28,20 +30,17 @@ def on_scene_complete(packet):
     print(f'got /on_scene_complete')
     responses['end_scene_recieved'] = True
 
+
 @socket_io.event
 def on_error(packet):
     msg = packet["data"]["message"]
     print(f'got /on_error message="{msg}"')
 
+
 @socket_io.event
 def on_publish(packet):
     content = packet['data'][0]['content']
     print(f'got /on_publish content="{content[0:80]}..."')
-
-
-# @socket_io.event
-# def connect():
-#     print(f'Connecting... dashboard.url={dashboard_url} uid={driver_uid}')
 
 
 @socket_io.event

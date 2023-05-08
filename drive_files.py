@@ -29,13 +29,12 @@ def get_json_data(filename):
         file_id = get_file_id_from_url(filename)
     except Exception as e:
         print(e)
-        return None, "Unable to retrieve file. Make sure the URL is correct and shared with the service account."
+        return None, "Unable to retrieve Scene JSON."
 
-    print(file_id)
     try:
         # Use the Drive API client to download the file
         file = drive_service.files().get(fileId=file_id).execute()
-        file_name = file['name']
+        # file_name = file['name']
         file_content = io.BytesIO()
         request = drive_service.files().get_media(fileId=file_id)
         media = MediaIoBaseDownload(file_content, request)
@@ -50,7 +49,7 @@ def get_json_data(filename):
     except Exception as e:
         message = e
 
-    message = f"Successfully downloaded file: {file_name}"
+    message = f"Successfully downloaded"
     return content, message
 
 # https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=sharing
