@@ -195,6 +195,7 @@ subtitle_settings = [
 ]
 
 scene_settings = [
+    [sg.Text("Warning, don't change these while a schedule is running. First stop the schedule, update, wait 8 seconds, and restart.")],
     [
         sg.Text("Interstitial scene duration", size=label_size, expand_x=True),
         sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label, expand_x=True),
