@@ -41,6 +41,7 @@ class Show:
         content += f" Stream: {self.obs_scene_changes['stream']}"
         content += f" Background: {self.obs_scene_changes['background']}"
         content += f" Interstitial: {self.obs_scene_changes['interstitial']}"
+        # content += f" Title Card: {self.obs_scene_changes['starting_soon']}"
         content += f" Scene File: {self.json_file_name}" if self.json_file_name else ""
         return content
     
@@ -55,7 +56,7 @@ class Show:
             message = "No show link"
 
         if do_message:
-            gui.message(message + f" for {self.link}")
+            gui.message(f"{message} for {self.link}")
 
     def start(self):
         self.did_start = True
