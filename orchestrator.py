@@ -63,7 +63,7 @@ obs_control.add_function("clear_subtitles", clear_subtitles)
 
 def start_schedule_gui(window):
     window['start_stop_schedule'].update(text=gui.stop_message, button_color='red')
-    message = f"Starting schedule." + f" Next show: {schedule.next_show}" if schedule.next_show else  "No shows scheduled."
+    message = f"Starting schedule." + f" Next show: {schedule.next_show}" if schedule.next_show else  "Schedule started: No shows scheduled."
     gui.message(message)
     event_queue.put(("update_output", message))
 
@@ -82,9 +82,9 @@ def start_stop_schedule(window):
 
 def orchestrator_loop():
     listen_thread = threading.Thread(target=dashboard_socket.listen)
-    show_thread = threading.Thread(target=shows.check_for_shows, args=(event_queue,))
+    # show_thread = threading.Thread(target=shows.check_for_shows, args=(event_queue,))
     listen_thread.start()
-    show_thread.start()
+    # show_thread.start()
 
     # Main event loop for listening to GUI events
     while True:
@@ -139,7 +139,7 @@ def orchestrator_loop():
     # Stop the background thread
     event_queue.put(("stop", None))
     listen_thread.join()
-    show_thread.join()
+    # show_thread.join()
     window.close()
 
 def main_loop_gui(window):

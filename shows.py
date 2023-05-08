@@ -138,7 +138,7 @@ class ShowScheduleState:
         return self._time_until_next_show, time_until_title, time_until_interstitial
     
     def begin_schedule(self):
-        self.timer_thread = threading.Thread(target=self.start_timer)
+        self.timer_thread = threading.Thread(target=self.timer_loop)
         self.on = True
         self.timer_thread.start()
 
@@ -153,7 +153,7 @@ class ShowScheduleState:
         gui.update_timer(None)
         obs_control.obsc_stream.clear_subtitles_queue()
 
-    def start_timer(self):
+    def timer_loop(self):
         start_time = time.time()
         time_until_show, time_until_title, time_until_interstitial = self.get_time_until_next_show()
 
@@ -176,6 +176,7 @@ class ShowScheduleState:
 
             # Do the things that need to get done before or at the show
             if time_until_show <= pd.Timedelta(seconds=start_thresh):
+                print("DEBUG Starting show")
                 if not self.next_show.did_start: # if the show hasn't been attempted to start yet
                     self.next_show.start()
                     # Not sure that these should go here...
@@ -183,10 +184,25 @@ class ShowScheduleState:
                     obs_control.obsc_stream.clear_subtitles_queue()
                     obs_control.obsc_stream.play_subtitles()
                     self.update_shows_gui()
+
+                    result, error = do_show_check()
+                    if result:
+                        next_show, upcoming_shows = result
+                        schedule.set_next_show(next_show, upcoming_shows)
+                        gui.update_shows(next=next_show, upcoming=upcoming_shows)
+                    elif error:
+                        gui.update_shows(next=next_show, upcoming=upcoming_shows)
+                    else:
+                        gui.update_shows(None, [])
+                        
+
+                    # do_show_check_and_generate_event(event_queue)
             elif time_until_title <= pd.Timedelta(seconds=start_thresh):
+                print("DEBUG Starting title card")
                 if not self.next_show.did_starting_soon:
                     self.next_show.starting_soon()
             elif time_until_interstitial <= pd.Timedelta(seconds=start_thresh):
+                print("DEBUG Starting interstitial")
                 if not self.next_show.did_interstitial:
                     self.next_show.interstitial()
 
