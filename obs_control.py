@@ -299,7 +299,6 @@ def is_text(item):
 
 
 def show_items():
-    cur_scene = obsc_stream.cl.get_current_program_scene().current_program_scene_name
     if obsc_stream.cl is not None:
         cur_scene = obsc_stream.cl.get_current_program_scene().current_program_scene_name
         items = obsc_stream.cl.get_scene_item_list(cur_scene).scene_items
