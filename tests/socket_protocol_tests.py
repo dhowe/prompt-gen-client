@@ -7,7 +7,8 @@ import socketio
 socket_io = socketio.Client()
 
 driver_uid = 'test@test.com'  # "adept-dev@tenderclaws.com"
-dashboard_url = 'ws://localhost:5000'  # 'ws://192.241.209.27:5050/' #
+#dashboard_url = 'ws://192.241.209.27:5050/'
+dashboard_url = 'ws://localhost:5000'
 
 responses = {
     'load_scene_recieved': False,
@@ -17,21 +18,25 @@ responses = {
 
 
 @socket_io.event
-def on_scene_loaded(data):
+def on_scene_loaded(packet):
     print(f'got /on_scene_loaded')
-    responses['load_scene_recieved'] += 1
+    responses['load_scene_recieved'] = True
 
 
 @socket_io.event
-def on_scene_complete(data):
+def on_scene_complete(packet):
     print(f'got /on_scene_complete')
     responses['end_scene_recieved'] = True
 
+@socket_io.event
+def on_error(packet):
+    msg = packet["data"]["message"]
+    print(f'got /on_error message="{msg}"')
 
 @socket_io.event
-def on_publish(payload):
-    content = payload['data'][0]['content']
-    print(f'got /on_publish "{content[0:80]}..."')
+def on_publish(packet):
+    content = packet['data'][0]['content']
+    print(f'got /on_publish content="{content[0:80]}..."')
 
 
 # @socket_io.event
@@ -60,6 +65,8 @@ if __name__ == "__main__":
         'uid': driver_uid,
         'secret': config['dashboard_password']
     }, wait_timeout=1)
+
+    socket_io.wait()
 
     # check that we're connected
     time.sleep(1)
