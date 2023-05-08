@@ -101,6 +101,7 @@ def orchestrator_loop():
         elif event == "update_sheet":
             config.write_config_value("google_sheet_show_sheet_name", values["sheet"])
             shows.do_show_check_and_generate_event(event_queue)
+            shows.schedule.update_shows_gui()
         elif event == "set_sleep_time":
             result = obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
             gui.message(result)

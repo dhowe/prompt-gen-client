@@ -115,6 +115,7 @@ class ShowScheduleState:
         self.next_show = next_show
         if upcoming_shows:
             self.upcoming_shows = upcoming_shows
+
     
     def add_countdown_action(self, name, advance_time, action):
         self.countdown_actions[name] = (advance_time, action)
@@ -180,11 +181,7 @@ class ShowScheduleState:
                     gui.clear_subtitles()
                     obs_control.obsc_stream.clear_subtitles_queue()
                     obs_control.obsc_stream.play_subtitles()
-                    gui.update_shows(
-                        current=self.next_show,
-                        next=self.upcoming_shows[1] if len(self.upcoming_shows) > 1 else None, 
-                        upcoming=self.upcoming_shows[2:]
-                    )
+                    self.update_shows_gui()
             elif time_until_title <= pd.Timedelta(seconds=start_thresh):
                 if not self.next_show.did_starting_soon:
                     self.next_show.starting_soon()
@@ -200,6 +197,13 @@ class ShowScheduleState:
             #         action()
 
             time.sleep(1 - ((time.time() - start_time) % 1)) # sleep until the next second 
+
+    def update_shows_gui(self):
+        gui.update_shows(
+            current=self.next_show,
+            next=self.upcoming_shows[1] if self.upcoming_shows is not None and len(self.upcoming_shows) > 1 else None, 
+            upcoming=self.upcoming_shows[2:] if self.upcoming_shows is not None and len(self.upcoming_shows) > 2 else None, 
+        )
 
 schedule = ShowScheduleState()
 
@@ -248,6 +252,7 @@ def get_upcoming_shows():
         return None
     
     return upcoming_shows
+
 
 
 def localize_show_datetime(row):
@@ -303,6 +308,7 @@ def do_show_check():
     except Exception as e:
         return None, e
     
+
 def do_show_check_and_generate_event(event_queue):
     # event_queue.put(("update_output", "Checking for new shows"))
     result, error = do_show_check()
