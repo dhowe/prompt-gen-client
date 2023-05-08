@@ -24,7 +24,10 @@ def get_json_data(filename):
         content: bytes object
         message: string
     """
-    content = None
+
+    json_content = None
+    file_name = None
+    
     try:
         file_id = get_file_id_from_url(filename)
     except Exception as e:
@@ -34,23 +37,24 @@ def get_json_data(filename):
     try:
         # Use the Drive API client to download the file
         file = drive_service.files().get(fileId=file_id).execute()
-        # file_name = file['name']
+        file_name = file['name']
+
         file_content = io.BytesIO()
         request = drive_service.files().get_media(fileId=file_id)
         media = MediaIoBaseDownload(file_content, request)
         done = False
         while done is False:
             _, done = media.next_chunk()
-        content = file_content.getvalue()
+        json_content = file_content.getvalue()
         try:
-            content = content.decode("utf-8")
+            json_content = json_content.decode("utf-8")
         except UnicodeDecodeError:
-            content = content
+            json_content = json_content
+        message = f"Successfully downloaded {file_name}."
     except Exception as e:
         message = e
 
-    message = f"Successfully downloaded"
-    return content, message
+    return json_content, file_name, message
 
-# https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=sharing
-get_json_data("https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=share_link")
+if __name__ == "__main__":
+    get_json_data("https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=share_link")

@@ -21,35 +21,59 @@ def create_link(text, url):
     return link_text, open_link
 
 
-def update_timer(time_until_show):    
+def update_timer(time_until_show, time_until_title=None, time_until_interstitial=None):    
     if not time_until_show:
-        window['timer'].update("")
+        window['show_timer'].update("")
+        window['show_timer_label'].update("")
+        window['title_timer'].update("")
+        window['title_timer_label'].update("")
+        window['interstitial_timer'].update("")
+        window['interstitial_timer_label'].update("")
         return
     
     if isinstance(time_until_show, str):
-        timer_str = time_until_show
+        window['timer_label'].update(time_until_show)
+        window['show_timer'].update("")
+        window['show_timer_label'].update("")
+        window['title_timer'].update("")
+        window['title_timer_label'].update("")
+        window['interstitial_timer_label'].update("")
+        window['interstitial_timer'].update("")
     else:
-        try:
-            days, remainder = divmod(time_until_show.seconds, 86400)
-            hours, remainder = divmod(remainder, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            
-            # Create the timer string
-            timer_str = ''
-            if time_until_show.days > 0:
-                timer_str += f'{time_until_show.days} day'
-                if time_until_show.days > 1:
-                    timer_str += 's'
-                timer_str += ' '
-            if hours > 0:
-                timer_str += f'{hours:02d}:'
-            if minutes > 0:
-                timer_str += f'{minutes:02d}:'
-            timer_str += f'{seconds:02d}'
-        except Exception as e:
-            timer_str = str(time_until_show)
+        time_until_show = format_timer(time_until_show)
+        time_until_title = format_timer(time_until_title)
+        time_until_interstitial = format_timer(time_until_interstitial)
     
-    window['timer'].update(timer_str)
+        window['show_timer_label'].update("Show")
+        window['show_timer'].update(time_until_show)
+        window['title_timer_label'].update("Title Card")
+        window['title_timer'].update(time_until_title)
+        window['interstitial_timer_label'].update("Interstitial")
+        window['interstitial_timer'].update(time_until_interstitial)
+    
+
+def format_timer(timer):
+    try:
+        days, remainder = divmod(timer.seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        # Create the timer string
+        timer_str = ''
+        if timer.days > 0:
+            timer_str += f'{timer.days} day'
+            if timer.days > 1:
+                timer_str += 's'
+            timer_str += ' '
+        if hours > 0:
+            timer_str += f'{hours:02d}:'
+        if minutes > 0:
+            timer_str += f'{minutes:02d}:'
+        timer_str += f'{seconds:02d}'
+    except Exception as e:
+        timer_str = str(timer)
+    return timer_str
+    
 
 
 def connect_to_obs_stream():
@@ -78,8 +102,9 @@ try:
 except:
     pass
 
-small_label = (10, 1)
 number = (5, 1)
+timer = (8, 1)
+small_label = (9, 1)
 small2_label = (22, 1)
 label_size = (22, 1)
 input_size = (40, 2)
@@ -88,6 +113,8 @@ biggest_size = (45, 4)
 subtitles_size = (50, 3)
 column_element = (40, 2)
 column_size = (40, 7)
+
+data_font = ("Helvetica", 14)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
 
@@ -103,7 +130,10 @@ dashboard_link, dashboard_action = create_link(dashboard_event, "http://192.241.
 shows_event = "Shows Spreadsheet"
 shows_link, shows_action = create_link(shows_event, "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
 
-links = [sg.Text("Links"), dashboard_link, shows_link]
+links = [
+    [dashboard_link, sg.Text("Warning: opening a second dashboard instance might break things")], 
+    [shows_link],
+]
 
 main_tab = [
     [
@@ -168,7 +198,7 @@ scene_settings = [
     [
         sg.Text("Interstitial scene duration", size=label_size, expand_x=True),
         sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label, expand_x=True),
-        sg.Button("Set interstitial duration", key="set_interstitial_scene")
+        sg.Button("Set interstitial duration", key="set_interstitial_time")
     ],
     [
         sg.Text("Starting soon / title scene duration", size=label_size, expand_x=True),
@@ -177,32 +207,48 @@ scene_settings = [
     ],
 ]
 
+timer_font = ('Helvetica', 17)
 layout = [
-    links,
     [
         sg.TabGroup([[
             sg.Tab('Connections', main_tab),
             sg.Tab('Subtitle Settings', subtitle_settings),
             sg.Tab('Scene Settings', scene_settings),
+            sg.Tab('Links', links),
         ]])
     ],
-    [sg.Text("No dashboard connected", key="timer_label", size=label_size, expand_x=True), sg.Text("", key="timer", size=small_label, expand_x=True)],
-    [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
     [
-        sg.Column([
-            [sg.Text("Current Show")],
-            [sg.Text(key="current_show", size=label_size, expand_x=True)]
-        ], expand_x=True),
-        sg.Column([
-            [sg.Text("Next show")],
-            [sg.Text(key="next_show", size=label_size, expand_x=True)]
-            ,
-        ], expand_x=True),
+        sg.Text("No dasboard connected", key="timer_label", size=small_label, expand_x=True), 
+        sg.Text("", key="show_timer_label", size=small_label), 
+        sg.Text("", key="show_timer", size=timer, font=timer_font), 
+        sg.Text("", key="title_timer_label", size=small_label), 
+        sg.Text("", key="title_timer", size=timer, font=timer_font),
+        sg.Text("", key="interstitial_timer_label", size=small_label), 
+        sg.Text("", key="interstitial_timer", size=timer, font=timer_font)
+    ],
+    # [
+    #     sg.Column([
+    #         [sg.Text("Current Show")],
+    #         [sg.Text(key="current_show", font=data_font, size=label_size, expand_x=True)]
+    #     ], expand_x=True),
+    #     sg.Column([
+    #         [sg.Text("Next show")],
+    #         [sg.Text(key="next_show", font=data_font, size=label_size, expand_x=True)]
+    #         ,
+    #     ], expand_x=True),
+    # ],
+    [
+        [sg.Text("Current Show")],
+        [sg.Text(key="current_show", font=data_font, size=label_size, expand_x=True)],
+    ],
+    [
+        [sg.Text("Next show")],
+        [sg.Text(key="next_show", font=data_font, size=label_size, expand_x=True)],
     ],
     [
         sg.Column([
             [sg.Text("Upcoming Shows")],
-            [sg.Text("", key='upcoming_shows', size=column_size, expand_x=True, expand_y=True)],
+            [sg.Text("", key='upcoming_shows', font=data_font, size=column_size, expand_x=True, expand_y=True)],
         ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
         sg.Column([
             [
@@ -214,12 +260,14 @@ layout = [
             [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12))],
         ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
     ],
+    [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
     [
         # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
+        sg.Button("Off Air", key="off_air", pad=((5, 5), (0, 5))),
         sg.Button("Starting Soon", key="starting_soon", pad=((5, 5), (0, 5))),
     ],
-    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", size=biggest_size, expand_x=True, expand_y=True)],
+    [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", font=data_font, size=biggest_size, expand_x=True, expand_y=True)],
 ]
 
 window = sg.Window("BeetleChat Stream", layout, resizable=True)

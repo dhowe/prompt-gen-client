@@ -97,18 +97,22 @@ def update_driver(driver, password):
     return message
 
 # Events we emit
-def start_show(scene_json):
+def start_show(scene_json, scene_name=None):
     if sio.connected:
         try:
+            # Set the show mode to automode (so it starts in the dashboard)
             scene_json = json.loads(scene_json)
             scene_json["uistate"]["automode"] = True
             scene_json = json.dumps(scene_json)
         except Exception as e:
             message = "Error failed to start show: "+ str(e)
-            print("ERROR", message)
             gui.message(message)
 
-        sio.emit('load_scene', {'scene_json': scene_json})
+        scene_name = scene_name or "Untitled"
+
+        sio.emit('load_scene', {'scene_json': scene_json, 'scene_name': scene_name})
+
+
     
 def stop_show():
     if sio.connected:

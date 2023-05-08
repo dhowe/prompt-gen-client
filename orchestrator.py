@@ -27,11 +27,20 @@ obsc_stream.on_subtitles_update = on_subtitles
 def technical():
     """Cut to the technical difficulties scene"""
     print("technical difficulties")
+    gui.message("Cutting to technical difficulties, pausing subtitles")
     schedule.stop_schedule()
     obs_control.obsc_stream.pause_subtitles()
     stop_schedule_gui(window)
     return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
 obs_control.add_function("technical", technical)
+
+def off_air():
+    """Cut to the off_air"""
+    gui.message("Cutting to off air")
+    return obsc_stream.cut_to_scene(config.get_config_value("off_air_scene", "Off Air"))
+obs_control.add_function("technical", technical)
+
+
 
 def play_subtitles():
     """Play the subtitles"""

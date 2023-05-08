@@ -85,4 +85,13 @@ def animate_text():
         cl.set_scene_item_transform("Scene", id, transform)
         time.sleep(0.1)
     
-    return items 
+    
+def upload_scene():
+    import socketio, os
+    file_name = 'test_scene.json'
+    scene_json = open(os.path.dirname(__file__) + f'/../{file_name}').read()
+    socket_io.emit('load_scene', {'scene_json': scene_json, 'scene_name': file_name})
+    print(f'sent /load_scene {file_name}')
+
+if __name__ == "__main__":
+    upload_scene()

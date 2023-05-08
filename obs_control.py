@@ -1,9 +1,8 @@
 import queue, threading, time
-import config
 from random import randint
-import obsws_python as obs 
-# Reference: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
 
+import obsws_python as obs # Reference: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
+import config
 
 def debug(text):
     # make colorful and styled text
@@ -301,20 +300,27 @@ def is_text(item):
 
 def show_items():
     cur_scene = obsc_stream.cl.get_current_program_scene().current_program_scene_name
-    items = obsc_stream.cl.get_scene_item_list(cur_scene).scene_items
-    return items
+    if obsc_stream.cl is not None:
+        cur_scene = obsc_stream.cl.get_current_program_scene().current_program_scene_name
+        items = obsc_stream.cl.get_scene_item_list(cur_scene).scene_items
+        return items
+    return []
 
 
 def show_inputs():
-    inputs = obsc_stream.cl.get_input_list().inputs
-    return inputs
+    if obsc_stream.cl is not None:
+        inputs = obsc_stream.cl.get_input_list().inputs
+        return inputs
+    return []
 
 
 def show_texts():
-    inputs = obsc_stream.cl.get_input_list().inputs
-    texts = [i for i in inputs if 'text' in i['inputKind']]
-    texts = [source['inputName'] for source in texts]
-    return texts
+    if obsc_stream.cl is not None:
+        inputs = obsc_stream.cl.get_input_list().inputs
+        texts = [i for i in inputs if 'text' in i['inputKind']]
+        texts = [source['inputName'] for source in texts]
+        return texts
+    return []
 
 # def starting_soon():
 #    return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Title Card Scene"))
