@@ -110,14 +110,18 @@ def start_show(scene_json, scene_name=None):
     if sio.connected:
         try:
             # Set the show mode to automode (so it starts in the dashboard)
-            scene_json = json.loads(scene_json)
-            scene_json["uistate"]["automode"] = True
-            scene_json = json.dumps(scene_json)
+            scene_json_dict = json.loads(scene_json)
+            scene_json_dict["uistate"]["automode"] = True
+            scene_json = json.dumps(scene_json_dict)
         except Exception as e:
-            message = "Error failed to start show: "+ str(e)
+            message = "Error failed to set automode: "+ str(e)
             gui.message(message)
 
         scene_name = scene_name or "Untitled"
+        try:
+            gui.message(f"Automode: {scene_json_dict['uistate']['automode']}")
+        except Exception:
+            gui.message("Error fetching automode")
 
         sio.emit('load_scene', {'scene_json': scene_json, 'scene_name': scene_name})
 
