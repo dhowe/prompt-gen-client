@@ -147,14 +147,14 @@ main_tab = [
         sg.Frame("OBS Instances", [
             [
                 sg.Column([
-                    [sg.Text("Stream", size=small_label, expand_x=True)],
+                    [sg.Text("Stream", size=small_label), sg.Text(key="current_stream_scene", size=input_size, expand_x=True)],
                     [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_stream.ip, key="stream_ip", size=input_size, expand_x=True)],
                     [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_stream.port, key="stream_port", size=input_size, expand_x=True)],
                     [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_stream.password, key="stream_password", size=input_size, expand_x=True)],
                     [sg.Text("", key="stream_connected", expand_x=True), sg.Button("Connect Stream", key="connect_to_obs_stream", pad=((5, 5), (20, 5)))],
                 ], pad=((0, 20), 0)),
                 sg.Column([
-                    [sg.Text("Background", size=small_label, expand_x=True)],
+                    [sg.Text("Background", size=small_label), sg.Text(key="current_background_scene", size=input_size, expand_x=True)],
                     [sg.Text("IP Address", size=small_label, expand_x=True), sg.InputText(obsc_background.ip, key="background_ip", size=input_size, expand_x=True)],
                     [sg.Text("Port", size=small_label, expand_x=True), sg.InputText(obsc_background.port, key="background_port", size=input_size, expand_x=True)],
                     [sg.Text("Password", size=small_label, expand_x=True), sg.InputText(obsc_background.password, key="background_password", size=input_size, expand_x=True)],
@@ -262,7 +262,6 @@ layout = [
             [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12))],
         ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
     ],
-    [sg.Text("Current OBS Scenes", size=label_size), sg.Text(key="current_scene", size=input_size, expand_x=True)],
     [
         # sg.Button("Preroll", key="preroll", pad=((5, 5), (0, 5))),
         sg.Button("Technical Difficulties", key="technical", pad=((5, 5), (0, 5))),
@@ -291,8 +290,11 @@ def message(content):
     status = content + "\n" + status
     update_output(window, status)
 
-def current_obs_scene(message):
-    window["current_scene"].update(message)
+def current_obs_scene(stream, background):
+    if stream:
+        window["current_stream_scene"].update(stream)
+    if background:
+        window["current_background_scene"].update(background)
 
 def update_shows(current=None, next=None, upcoming=list()):
     if current:
@@ -345,13 +347,13 @@ def automode():
 
 def do_scene_cut(stream=None, background=None, interstitial=None):
     # Not sure this should go here
-    scene_message = cut_to_scenes(
+    stream_msg, background_msg = cut_to_scenes(
         stream,
         background,
         interstitial
     )
-    current_obs_scene(scene_message)
-    message(scene_message)
+    current_obs_scene(stream_msg, background_msg)
+    message(str(stream_msg) + "\n" + str(background_msg))
 
 def clear_subtitles():
     window['subtitles'].update(value="")

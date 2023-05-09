@@ -349,9 +349,10 @@ def secret():
 def cut_to_scenes(stream=None, background=None, interstitial=None):
     if stream and interstitial:
         print("WARNING: cut_to_scenes called with both stream and interstitial. Using stream.")
-    m1 = obsc_stream.cut_to_scene(stream) if stream else obsc_stream.cut_to_scene(interstitial)
-    m2 = obsc_background.cut_to_scene(background)
-    return "\n".join([m1, m2])
+    stream_msg = obsc_stream.cut_to_scene(stream) if stream else obsc_stream.cut_to_scene(interstitial)
+    background_msg = obsc_background.cut_to_scene(background)
+
+    return stream_msg, background_msg
 
 not_clickable = ["is_text", "update_output", "debug"]
 available_functions = [(name, func) for name, func in globals().items() if

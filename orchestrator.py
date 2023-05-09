@@ -32,7 +32,12 @@ def technical():
     obs_control.obsc_stream.pause_subtitles()
     gui.toggle_subtitles(False)
     stop_schedule_gui(window)
-    return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
+    tech_scene = config.get_config_value("technical_difficulties_scene", "Technical Difficulties")
+    response = obsc_stream.cut_to_scene(tech_scene)
+    if obsc_stream.connected:
+        gui.current_obs_scene(tech_scene, None)
+
+    return response
 obs_control.add_function("technical", technical)
 
 def off_air():
