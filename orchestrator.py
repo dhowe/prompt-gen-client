@@ -30,6 +30,7 @@ def technical():
     gui.message("Cutting to technical difficulties, pausing subtitles")
     schedule.stop_schedule()
     obs_control.obsc_stream.pause_subtitles()
+    gui.toggle_subtitles(False)
     stop_schedule_gui(window)
     return obsc_stream.cut_to_scene(config.get_config_value("technical_difficulties_scene", "Technical Difficulties"))
 obs_control.add_function("technical", technical)
@@ -41,18 +42,12 @@ def off_air():
 obs_control.add_function("technical", technical)
 
 
-
-def play_subtitles():
-    """Play the subtitles"""
-    obsc_stream.play_subtitles()
-    gui.message("Playing subtitles")
-obs_control.add_function("play_subtitles", play_subtitles)
-
-def pause_subtitles():
-    """Play the subtitles"""
-    obsc_stream.pause_subtitles()
-    gui.message("Pausing subtitles")
-obs_control.add_function("pause_subtitles", pause_subtitles)
+def toggle_subtitles():
+    """Play/pause the subtitles"""
+    on = obsc_stream.toggle_subtitles_on()
+    gui.toggle_subtitles(on)
+    gui.message("Resuming subtitles" if on else "Pausing subtitles")
+obs_control.add_function("toggle_subtitles", toggle_subtitles)
 
 def clear_subtitles():
     """Clear the subtitles"""
@@ -99,9 +94,11 @@ def orchestrator_loop():
             listen_thread = threading.Thread(target=dashboard_socket.listen)
             listen_thread.start()
         elif event == "update_sheet":
+            gui.message(f"Fetching show schedule from {values['sheet']}")
             config.write_config_value("google_sheet_show_sheet_name", values["sheet"])
-            shows.do_show_check_and_generate_event(event_queue)
+            shows.do_show_check_and_set_next_show()
             shows.schedule.update_shows_gui()
+            gui.message("Updated schedule")
         elif event == "set_sleep_time":
             result = obsc_stream.set_subtitle_sleep_time(values["sleep_time"])
             gui.message(result)
@@ -142,35 +139,9 @@ def orchestrator_loop():
     # show_thread.join()
     window.close()
 
-def main_loop_gui(window):
-    while True:
-        event, values = window.read(timeout=100)
-        if event == "__TIMEOUT__":
-            continue
-        elif event == gui.sg.WIN_CLOSED:
-            break
-        if event in available_function_dict.keys():
-            function = available_function_dict[event]
-            num_params = len(inspect.signature(function).parameters)
-            if num_params == 2:
-                result = function(values["field"], values["value"])
-            elif num_params == 1:
-                result = function(values["value"])
-            else:
-                result = function()
-            gui.update_output(window, result)
-        elif event == "new_next_show":
-            # TODO move this somewhere
-            next = values[0]
-            upcoming = values[1]
-            upcoming = upcoming[1:] if len(upcoming) > 1 else []
-            gui.update_shows(next=next, upcoming=values[1])
-        else:
-            event_queue.put((event, values))
-
 
 if __name__ == "__main__":
     orchestrator_thread = threading.Thread(target=orchestrator_loop)
     orchestrator_thread.start()
-    main_loop_gui(gui.window)
+    gui.main_loop_gui(gui.window)  # The GUI has to be on the main thread because tkinter is not thread safe
     orchestrator_thread.join()

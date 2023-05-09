@@ -57,6 +57,16 @@ def on_scene_complete(data):
     print(f'got /on_scene_complete')
     responses['end_scene_recieved'] += 1
 
+@sio.event
+def on_error(packet):
+    '''
+    NOTE: server will send this event on serious error
+    It can only be overridden be sending a new load_scene msg
+    '''
+    msg = packet["data"]["message"]
+    print(f'got /on_error message="{msg}"')
+    gui.message(f"Server Error: {msg}")
+
 
 def is_driver(data):
     # helper function to check if the currently assigned driver is the one
@@ -68,7 +78,6 @@ def is_driver(data):
 
 @sio.event
 def update_subtitles(data):
-    
     did_update = False
     driver, message = is_driver(data)
     print("driver", driver, "message", message)

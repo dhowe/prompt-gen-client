@@ -58,6 +58,14 @@ class OBSController:
     def pause_subtitles(self):
         self.subtitles_on = False
 
+    def toggle_subtitles_on(self):
+        on = self.subtitles_on
+        if on:
+            self.pause_subtitles()
+        else:
+            self.play_subtitles()
+        return self.subtitles_on
+
     def set_subtitle_sleep_time(self, words_per_second):
         try:
             self.words_per_second = float(words_per_second)
@@ -103,18 +111,17 @@ class OBSController:
                     continue
 
                 if self.subtitles_queue.empty():
-                    print("empty queue", time.time())
                     pass
 
                 text, words = self.subtitles_queue.get()
-                if text is None:
-                    # A blank hold
-                    text = ""
+                if text is None: 
+                    text = "" # A blank hold
                     delay = words
+                    rand_delay = 0
                 else:
-                    delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
+                    reading_delay = max(self.min_delay, self.get_reading_speed(words, self.words_per_second))
                     rand_delay = randint(0, self.max_rand)
-                    delay = delay + rand_delay
+                    delay = reading_delay + rand_delay
 
                 self.change_text(self.dialogue_text_field, text)
                 upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
@@ -321,10 +328,8 @@ def show_texts():
         return texts
     return []
 
-# def starting_soon():
-#    return obsc_stream.cut_to_scene(config.get_config_value("starting_soon_scene", "Title Card Scene"))
-
 def send_subtitles(lines):
+    # TODO I think this is where we want to update the GUI also
     return obsc_stream.queue_subtitles(lines)
 
 def cut_to_scene():

@@ -35,6 +35,7 @@ class Show:
         self.did_start = False
         self.did_interstitial = False
         self.did_starting_soon = False
+        self.did_load_to_dashboard = False
 
     def __repr__(self):
         content = f"{self.name} at {self.time}"
@@ -58,11 +59,12 @@ class Show:
         if do_message:
             gui.message(f"{message} for {self.link}")
 
-    def start(self):
-        self.did_start = True
-
+    def load_scene_to_dashboard(self):
+        """
+        Send the json on to the dashboard to begin generation
+        """
+        self.did_load_to_dashboard = True
         self._update_json(do_message=True) # Just in case it changed
-        
         if self.json:
             gui.update_timer(f"Starting show {self.name}")
             count = responses['load_scene_recieved']
@@ -75,26 +77,47 @@ class Show:
                 message = f"Failed to start {self.name}: {self.json_file_name}"
         else:
             message = f"No json found for {self.link}"
-        
-        obs_control.obsc_stream.clear_subtitles_queue()
 
-        gui.do_scene_cut(
-            stream=self.obs_scene_changes["stream"], 
-            background=self.obs_scene_changes["background"]
-        )
+        obs_control.obsc_stream.clear_subtitles_queue()
+        gui.clear_subtitles()
+        obs_control.obsc_stream.add_empty_subtitles() # TODO this might not be enough since we are about to pause
+        obs_control.obsc_stream.pause_subtitles()
+
         gui.message(message)
+
+    def start(self):
+        if not self.did_load_to_dashboard:
+            self.load_scene_to_dashboard()
+        
+        self.did_start = True
+        
+        if self.json:
+            # Cut to the scene
+            gui.do_scene_cut(
+                stream=self.obs_scene_changes["stream"], 
+                background=self.obs_scene_changes["background"]
+            )
+            # Resume the subtitles (which should have a queue by now)
+            obs_control.obsc_stream.play_subtitles()
+        else:
+            gui.message(f"Not cutting to {self.name} because no json was found.")
 
     def interstitial(self):
         self.did_interstitial = True
         scene = self.obs_scene_changes["interstitial"]
         gui.do_scene_cut(interstitial=scene)
 
+        self.load_scene_to_dashboard()
+
     def starting_soon(self):
+        if not self.did_load_to_dashboard:
+            self.load_scene_to_dashboard()
+        
         self.did_starting_soon = True  
         gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
         obs_control.obsc_stream.populate_text_boxes(self.data) # any of the rows in the sheet can be used as a source of text
 
-class ShowScheduleState:
+class ShowSchedule:
     def __init__(self) -> None:
         self.on = False
         self.upcoming_shows = None
@@ -116,7 +139,6 @@ class ShowScheduleState:
         self.next_show = next_show
         if upcoming_shows:
             self.upcoming_shows = upcoming_shows
-
     
     def add_countdown_action(self, name, advance_time, action):
         self.countdown_actions[name] = (advance_time, action)
@@ -133,8 +155,6 @@ class ShowScheduleState:
         time_until_title = time_until_interstitial + pd.Timedelta(seconds=float(obs_control.obsc_stream.interstitial_time))
         self._time_until_next_show = time_until_title + pd.Timedelta(seconds=float(obs_control.obsc_stream.starting_soon_time))
         
-        # print(f"now: {now}, schedule: {self.next_show.data['show_sequence_start']} interstitial: {time_until_interstitial}, title: {time_until_title}, next_show: {self._time_until_next_show}")
-
         return self._time_until_next_show, time_until_title, time_until_interstitial
     
     def begin_schedule(self):
@@ -168,15 +188,10 @@ class ShowScheduleState:
             time_until_title = pd.Timedelta(seconds=0) if time_until_title < pd.Timedelta(seconds=0) else time_until_title
             time_until_interstitial = pd.Timedelta(seconds=0) if time_until_interstitial < pd.Timedelta(seconds=0) else time_until_interstitial
 
-            # start_show_time = 1
-            # starting_soon_time = obs_control.obsc_stream.starting_soon_time
-            # interstitial_time = float(obs_control.obsc_stream.interstitial_time) + float(starting_soon_time)
-
             start_thresh = 1
 
             # Do the things that need to get done before or at the show
             if time_until_show <= pd.Timedelta(seconds=start_thresh):
-                print("DEBUG Starting show")
                 if not self.next_show.did_start: # if the show hasn't been attempted to start yet
                     self.next_show.start()
                     # Not sure that these should go here...
@@ -195,8 +210,6 @@ class ShowScheduleState:
                     else:
                         gui.update_shows(None, [])
                         
-
-                    # do_show_check_and_generate_event(event_queue)
             elif time_until_title <= pd.Timedelta(seconds=start_thresh):
                 print("DEBUG Starting title card")
                 if not self.next_show.did_starting_soon:
@@ -222,7 +235,7 @@ class ShowScheduleState:
             upcoming=self.upcoming_shows[2:] if self.upcoming_shows is not None and len(self.upcoming_shows) > 2 else None, 
         )
 
-schedule = ShowScheduleState()
+schedule = ShowSchedule()
 
 def get_all_shows():
     try:
@@ -326,25 +339,24 @@ def do_show_check():
         return None, e
     
 
-def do_show_check_and_generate_event(event_queue):
-    # event_queue.put(("update_output", "Checking for new shows"))
+def do_show_check_and_set_next_show():
     result, error = do_show_check()
     if result:
         next_show, upcoming_shows = result
         schedule.set_next_show(next_show, upcoming_shows)
-        event_queue.put(("new_next_show", result))
+        gui.update_shows(next=next_show, upcoming=upcoming_shows)
     elif error:
-        event_queue.put(("new_next_show", "Error retrieving show: " + str(error)))
+        gui.update_shows(next=next_show, upcoming=upcoming_shows)
     else:
-        event_queue.put(("new_next_show", (None, [])))
+        gui.update_shows(None, [])
     
-def check_for_shows(event_queue):
-    """
-    Function to run in a separate thread to check for upcoming shows
-    """
-    while True:
-        do_show_check_and_generate_event(event_queue)
-        time.sleep(8)
+# def check_for_shows(event_queue):
+#     """
+#     Function to run in a separate thread to check for upcoming shows
+#     """
+#     while True:
+#         do_show_check_and_set_next_show()
+#         time.sleep(8)
 
 if __name__ == "__main__":
     print("all_shows", get_all_shows())

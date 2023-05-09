@@ -4,6 +4,7 @@ import queue
 import inspect
 from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict, cut_to_scenes
 import config
+import time
 
 default_driver = config.get_config_value("dashboard_user")
 default_driver_pass = config.get_config_value("dashboard_password", "")
@@ -117,6 +118,7 @@ column_size = (40, 7)
 data_font = ("Helvetica", 14)
 
 start_message, stop_message = "Start Schedule", "Stop Schedule"
+pause_message, resume_message = "Pause Subtitles", "Resume Subtitles"
 
 # Automatically generate buttons based on available functions
 function_buttons = []
@@ -131,7 +133,7 @@ shows_event = "Shows Spreadsheet"
 shows_link, shows_action = create_link(shows_event, "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
 
 links = [
-    [dashboard_link, sg.Text("Warning: opening a second dashboard instance might break things")], 
+    [dashboard_link, sg.Text("Warning: opening a second dashboard instance will break things")], 
     [shows_link],
 ]
 
@@ -165,7 +167,7 @@ main_tab = [
     [
         sg.Text("Sheet Name", size=label_size), 
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True), 
-        sg.Button("Check for shows", key="update_sheet"),
+        sg.Button("Update Shows", key="update_sheet"),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
     ],
     # function_buttons,
@@ -253,9 +255,8 @@ layout = [
         ], expand_x=True, expand_y=True, scrollable=True,  vertical_scroll_only=True),
         sg.Column([
             [
-                sg.Button("Reset Subtitles", key="clear_subtitles", pad=((5, 5), (0, 5))),
-                sg.Button("Pause", key="pause_subtitles", pad=((5, 5), (0, 5))),
-                sg.Button("Resume", key="play_subtitles", pad=((5, 5), (0, 5))),
+                sg.Button("Clear Subtitles", key="clear_subtitles", pad=((5, 5), (0, 5))),
+                sg.Button(pause_message, key="toggle_subtitles", pad=((5, 5), (0, 5))),
              ],
             [sg.Text("", key="subtitles", size=column_element, expand_x=True, expand_y=True, font=('Helvetica', 15))],
             [sg.Text("", key="upcoming_subtitles", size=column_size, expand_x=True, expand_y=True, font=('Helvetica', 12))],
@@ -281,6 +282,9 @@ def update_output(window, content):
             content = content[1]
         print("content", str(content))
         window["output"].update(str(content))
+
+def toggle_subtitles(on):
+    window['toggle_subtitles'].update(text=pause_message if on else resume_message)
 
 def message(content):
     global status
@@ -347,3 +351,30 @@ def do_scene_cut(stream=None, background=None, interstitial=None):
 def clear_subtitles():
     window['subtitles'].update(value="")
     window['upcoming_subtitles'].update(value="")
+
+
+def main_loop_gui(window):
+    while True:
+        event, values = window.read(timeout=100)
+        if event == "__TIMEOUT__":
+            continue
+        elif event == sg.WIN_CLOSED:
+            break
+        if event in available_function_dict.keys():
+            function = available_function_dict[event]
+            num_params = len(inspect.signature(function).parameters)
+            if num_params == 2:
+                result = function(values["field"], values["value"])
+            elif num_params == 1:
+                result = function(values["value"])
+            else:
+                result = function()
+            update_output(window, result)
+        elif event == "new_next_show":
+            # TODO move this somewhere
+            next = values[0]
+            upcoming = values[1]
+            upcoming = upcoming[1:] if len(upcoming) > 1 else []
+            update_shows(next=next, upcoming=values[1])
+        else:
+            event_queue.put((event, values))
