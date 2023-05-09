@@ -116,8 +116,9 @@ class Show:
             self.load_scene_to_dashboard()
         
         self.did_starting_soon = True  
+        obs_control.obsc_stream.populate_text_boxes(self.data)  # any of the rows in the sheet can be used as a source of text
+        time.sleep(0.05)
         gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
-        obs_control.obsc_stream.populate_text_boxes(self.data) # any of the rows in the sheet can be used as a source of text
         gui.message(f"!Starting soon!")
 
 class ShowSchedule:
