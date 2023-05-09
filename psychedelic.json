@@ -1,0 +1,41 @@
+{
+    "uid": "j.noland@tenderclaws.com",
+    "history": [],
+    "published": [],
+    "uistate": {
+        "once_through": false,
+        "randomized": true,
+        "automode": true,
+        "automode_delay": 1501,
+        "autopub_delay": 14951,
+        "staged": [],
+        "prepub": [],
+        "actions": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        ]
+    },
+    "actions": [
+        "Continue the scene, but make Billy elated",
+        "Continue the scene, but make Billy fearful",
+        "Continue the scene, but make Billy experience Oceanic Boundlessness",
+        "Continue the scene, but make Billy think he is melting",
+        "Continue the scene, but make Billy understand the nature of the universe",
+        "Continue the scene, but make Billy dizzy"
+    ],
+    "user_prompt": "The scene opens in what appear to be a freshwater aquarium. The only character\u00a0 (Billy) is taken a large dose of LSD and is hallucinating. He believes he has awoken to find himself transformed into diving beetles with mystical powers. Write very short lines, in the style of Samuel Beckett, for the start of the scene in which Billy freaks out.",
+    "system_prompt": "You are PlaywrightAI, a large language model designed to interactively generate dramatic scripts. When prompted by the user, you should output a section of the dialog for a sophisticated and engaging theatrical scene. Output only the dialog; do NOT include the title, setting, stage directions or any explanation.",
+    "params": {
+        "model": "gpt-4",
+        "max_context_tokens": 8192,
+        "n": 1,
+        "top_p": 1.0,
+        "temperature": 0.8,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+    }
+}
