@@ -128,6 +128,8 @@ def orchestrator_loop():
             gui.shows_action()
         elif event == "connect_to_obs_background":
             gui.connect_to_obs_background()
+        elif event == "automode":
+            gui.automode()
         elif event == "connect_to_obs_stream":
             gui.connect_to_obs_stream()
         elif event in available_function_dict.keys():

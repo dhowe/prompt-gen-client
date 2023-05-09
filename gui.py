@@ -168,6 +168,7 @@ main_tab = [
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True), 
         sg.Button("Update Shows", key="update_sheet"),
         sg.Button(start_message, key="start_stop_schedule", pad=((5, 5), (0, 5))),
+        sg.Checkbox("Automode", True, key="automode", enable_events=True, ),
     ],
     # function_buttons,
 ]
@@ -336,6 +337,11 @@ def connect_to_obs_background():
     window['background_connected'].update(message)
     return 'connected', message
 
+def automode():
+    auto = window['automode'].get()
+    config.write_config_value("automode", auto)
+    msg = f"Automode: {auto}"
+    message(msg)
 
 def do_scene_cut(stream=None, background=None, interstitial=None):
     # Not sure this should go here
