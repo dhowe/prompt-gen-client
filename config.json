@@ -1,4 +1,5 @@
 {
+    "automode": true,
     "background_obs_ip": "192.168.0.27",
     "background_obs_password": "password",
     "background_obs_port": "8888",
