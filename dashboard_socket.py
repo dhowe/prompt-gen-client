@@ -119,7 +119,9 @@ def start_show(scene_json, scene_name=None):
 
         scene_name = scene_name or "Untitled"
         try:
-            gui.message(f"Automode: {scene_json_dict['uistate']['automode']}")
+            automode = f"Automode: {scene_json_dict['uistate']['automode']}"
+            print("AUTOMODE: ", automode)
+            gui.message(automode)
         except Exception:
             gui.message("Error fetching automode")
 
