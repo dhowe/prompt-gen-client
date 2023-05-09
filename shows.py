@@ -66,7 +66,7 @@ class Show:
         self.did_load_to_dashboard = True
         self._update_json(do_message=True) # Just in case it changed
         if self.json:
-            gui.update_timer(f"Starting show {self.name}")
+            gui.update_timer(f"Beginning show loading for {self.name}")
             count = responses['load_scene_recieved']
             name = (self.name or "Untitled") + " " + (self.json_file_name or "")
             start_show(self.json, name)
@@ -99,6 +99,7 @@ class Show:
             )
             # Resume the subtitles (which should have a queue by now)
             obs_control.obsc_stream.play_subtitles()
+            gui.message(f"!Show started!")
         else:
             gui.message(f"Not cutting to {self.name} because no json was found.")
 
@@ -108,6 +109,7 @@ class Show:
         gui.do_scene_cut(interstitial=scene)
 
         self.load_scene_to_dashboard()
+        gui.message(f"!Interstitial!")
 
     def starting_soon(self):
         if not self.did_load_to_dashboard:
@@ -116,6 +118,7 @@ class Show:
         self.did_starting_soon = True  
         gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
         obs_control.obsc_stream.populate_text_boxes(self.data) # any of the rows in the sheet can be used as a source of text
+        gui.message(f"!Starting soon!")
 
 class ShowSchedule:
     def __init__(self) -> None:
@@ -211,11 +214,9 @@ class ShowSchedule:
                         gui.update_shows(None, [])
                         
             elif time_until_title <= pd.Timedelta(seconds=start_thresh):
-                print("DEBUG Starting title card")
                 if not self.next_show.did_starting_soon:
                     self.next_show.starting_soon()
             elif time_until_interstitial <= pd.Timedelta(seconds=start_thresh):
-                print("DEBUG Starting interstitial")
                 if not self.next_show.did_interstitial:
                     self.next_show.interstitial()
 
