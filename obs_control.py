@@ -130,12 +130,23 @@ class OBSController:
                 time.sleep(delay + rand_delay)
             except Exception as e:
                 print("Error with subtitles_process", e)
+
+    def _add_empty_subtitles_to_queue(self):
+        """
+        Queues an empty subtitles to the queue
+        """
+        self.subtitles_queue.put((None, float(self.blank_hold)))
+    
+    def bypass_queue_write_empty_subtitles(self):
+        """
+        Regardless of the queue state, write empty subtitles.
+        You may need to pause for this to endure. 
+        """
+        self.change_text(self.dialogue_text_field, "")
                 
     def clear_subtitles_queue(self):
-        # self.subtitles_queue = queue.Queue()
         with self.subtitles_queue.mutex:
             self.subtitles_queue.queue.clear()
-
         
     def _write_settings(self, ip, port, password):
         config.write_config_value(f"{self.name}_obs_ip", ip)
@@ -182,7 +193,7 @@ class OBSController:
             # self.subtitles_queue.put((broken_line, last_extra_word_proxy))
 
             # Timeout the very last subtitle at the end
-            self.add_empty_subtitles()
+            self._add_empty_subtitles_to_queue()
             
             sent = True
             message = "Subtitles sent to OBS"
@@ -195,9 +206,6 @@ class OBSController:
             return len(text.split())
         return 0
 
-    def add_empty_subtitles(self):
-        self.subtitles_queue.put((None, float(self.blank_hold)))
-    
     def get_reading_speed(self, word_count, words_per_second):
         try:
             speed = word_count / words_per_second

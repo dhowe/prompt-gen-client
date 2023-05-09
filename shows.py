@@ -80,8 +80,8 @@ class Show:
 
         obs_control.obsc_stream.clear_subtitles_queue()
         gui.clear_subtitles()
-        obs_control.obsc_stream.add_empty_subtitles() # TODO this might not be enough since we are about to pause
         obs_control.obsc_stream.pause_subtitles()
+        obs_control.obsc_stream.bypass_queue_write_empty_subtitles()
 
         gui.message(message)
 

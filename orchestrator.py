@@ -53,7 +53,7 @@ def clear_subtitles():
     """Clear the subtitles"""
     obsc_stream.clear_subtitles_queue()
     gui.clear_subtitles()
-    obsc_stream.add_empty_subtitles()
+    obsc_stream.bypass_queue_write_empty_subtitles()
 obs_control.add_function("clear_subtitles", clear_subtitles)
 
 def start_schedule_gui(window):

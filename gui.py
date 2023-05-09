@@ -74,7 +74,6 @@ def format_timer(timer):
     except Exception as e:
         timer_str = str(timer)
     return timer_str
-    
 
 
 def connect_to_obs_stream():

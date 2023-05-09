@@ -127,8 +127,6 @@ def start_show(scene_json, scene_name=None):
 
         sio.emit('load_scene', {'scene_json': scene_json, 'scene_name': scene_name})
 
-
-    
 def stop_show():
     if sio.connected:
         sio.emit('end_scene')
