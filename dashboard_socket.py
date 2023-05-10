@@ -109,6 +109,7 @@ def update_driver(driver, password):
 def start_show(scene_json, scene_name=None):
     if sio.connected:
         force_automode = config.get_config_value("automode", True)
+        print("CHECKBOX is set to ", force_automode)
         try:
             # Set the show mode to automode (so it starts in the dashboard)
             scene_json_dict = json.loads(scene_json)
@@ -116,13 +117,17 @@ def start_show(scene_json, scene_name=None):
                 scene_json_dict["uistate"]["automode"] = True
             defined_automode = scene_json_dict['uistate']['automode']
             message = f"AUTOMODE IS SET TO {defined_automode}"
-            print(message)
             scene_json = json.dumps(scene_json_dict)
         except Exception as e:
             message = "ERROR: failed to set automode: "+ str(e)
 
+        print(message)
         gui.message(message)
         sio.emit('load_scene', {'scene_json': scene_json, 'scene_name': scene_name})
+    else:
+        message = "ERROR Failed to start show, dashboard not connected."
+        gui.message(message)
+        print(message)
 
 def stop_show():
     if sio.connected:
