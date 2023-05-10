@@ -108,13 +108,14 @@ def update_driver(driver, password):
 # Events we emit
 def start_show(scene_json, scene_name=None):
     if sio.connected:
-        new_automode = config.get_config_value("automode", True)
+        force_automode = config.get_config_value("automode", True)
         try:
             # Set the show mode to automode (so it starts in the dashboard)
             scene_json_dict = json.loads(scene_json)
-            scene_json_dict["uistate"]["automode"] = new_automode
+            if force_automode:
+                scene_json_dict["uistate"]["automode"] = True
             defined_automode = scene_json_dict['uistate']['automode']
-            message = f"AUTOMODE: {defined_automode}"
+            message = f"AUTOMODE IS SET TO {defined_automode}"
             print(message)
             scene_json = json.dumps(scene_json_dict)
         except Exception as e:

@@ -3,7 +3,7 @@
     "history": [],
     "published": [],
     "uistate": {
-        "once_through": false,
+        "once_through": true,
         "randomized": true,
         "automode": true,
         "automode_delay": 1501,
