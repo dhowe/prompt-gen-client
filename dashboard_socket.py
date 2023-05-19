@@ -38,7 +38,12 @@ def on_connect(data):
 
 @sio.event
 def on_publish(data):
-    print('/published: ', data)
+    print('/on_publish: ', data)
+    update_subtitles(data)
+
+@sio.event
+def on_publish_now(data):
+    print('/on_publish_now: ', data)
     update_subtitles(data)
 
 
