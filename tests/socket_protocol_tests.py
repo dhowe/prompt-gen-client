@@ -81,9 +81,9 @@ if __name__ == "__main__":
         socket_io.disconnect()
         raise Exception(f'/connect failed with status={responses["on_connect"]}')
 
-    socket_io.wait()
+    # socket_io.wait()
 
-    if 0:
+    if 1:
         # load json scene file
         file_name = 'test_scene.json'
         scene_json = open(os.path.dirname(__file__) + f'/../{file_name}').read()
@@ -95,8 +95,8 @@ if __name__ == "__main__":
         if not responses['load_scene_recieved']:
             socket_io.disconnect()
             raise Exception('/load_scene not recieved ')
-        if 1:
-            time.sleep(5)
+        if 0:
+            time.sleep(10)
 
             # end the scene
             socket_io.emit('end_scene')
@@ -107,6 +107,9 @@ if __name__ == "__main__":
             if not responses['end_scene_recieved']:
                 socket_io.disconnect()
                 raise Exception('/end_scene not recieved ')
+        else:
+            socket_io.wait()
+
 
 time.sleep(5)
 socket_io.disconnect()
