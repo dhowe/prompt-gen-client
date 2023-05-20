@@ -133,9 +133,15 @@ class OBSController:
 
     def _add_empty_subtitles_to_queue(self):
         """
-        Queues an empty subtitles to the queue
+        Appends an empty subtitle to the queue
         """
         self.subtitles_queue.put((None, float(self.blank_hold)))
+
+    def _add_empty_subtitles_to_head_of_queue(self):
+        """
+        Pushes an empty subtitle to the head of the queue
+        """
+        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold)))
     
     def bypass_queue_write_empty_subtitles(self):
         """
@@ -178,6 +184,26 @@ class OBSController:
         print(self.message)
         return self.connected, self.message
 
+    def queue_subtitles_at_head(self, lines): # TODO: reverse order
+        sent = False
+        if self.connected:
+            for line in split_new_lines(lines):
+                broken_lines = self.split_long_lines(line)
+                for broken_line in broken_lines:
+                    words = self.get_words(broken_line)
+                    self.subtitles_queue.queue.insert(0, (broken_line, words))
+                    print(f"Pushing '{broken_line}' to head of queue, '{words}' words")
+
+            # Timeout the very last subtitle at the end
+            self._add_empty_subtitles_to_head_of_queue()
+
+            sent = True
+            message = "Subtitles sent to OBS"
+        else:
+            message = "Error: OBS Controller not connected"
+
+        return sent, message
+
     def queue_subtitles(self, lines):
         sent = False
         if self.connected:
@@ -186,7 +212,7 @@ class OBSController:
                 for broken_line in broken_lines:
                     words = self.get_words(broken_line)
                     self.subtitles_queue.put((broken_line, words))
-                    print(f"Putting {broken_line} into the queue, {words} words")
+                    print(f"Putting '{broken_line}' in queue, '{words}' words")
             
             # Hold the last one a bit longer
             # last_extra_word_proxy = randint(*self.last_message_extra_words)
@@ -199,6 +225,7 @@ class OBSController:
             message = "Subtitles sent to OBS"
         else:
             message = "Error: OBS Controller not connected"
+
         return sent, message
     
     def get_words(self, text):
@@ -339,6 +366,11 @@ def show_texts():
 def send_subtitles(lines):
     # TODO I think this is where we want to update the GUI also
     return obsc_stream.queue_subtitles(lines)
+
+def send_subtitles_now(lines):
+    # TODO I think this is where we want to update the GUI also
+    return obsc_stream.queue_subtitles_at_head(lines)
+
 
 def cut_to_scene():
     return obsc_stream.cut_to_scene("Psychedelics")

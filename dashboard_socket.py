@@ -1,8 +1,10 @@
 import json, time
+from importlib import import_module
+
 import socketio
 import gui
 import config
-from obs_control import send_subtitles
+from obs_control import send_subtitles, send_subtitles_now
 
 sio = socketio.Client()
 
@@ -82,7 +84,7 @@ def is_driver(data):
 
 
 @sio.event
-def update_subtitles(data):
+def update_subtitles(data, immediate=False):
     did_update = False
     driver, message = is_driver(data)
     print("driver", driver, "message", message)
@@ -90,7 +92,10 @@ def update_subtitles(data):
         try:
             messages = data.get("data", [])
             message_contents = [message.get("content", "") for message in messages]
-            did_update, message = send_subtitles(message_contents)
+            if immediate:
+                did_update, message = send_subtitles_now(message_contents)
+            else:
+                did_update, message = send_subtitles(message_contents)
         except Exception as e:
             print(message, e)
     sio.emit('text_updated', {'updated': did_update, 'message': message, "field": "subtitles"})

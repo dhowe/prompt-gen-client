@@ -271,7 +271,7 @@ layout = [
     [sg.Text("Status", size=label_size, expand_x=True), sg.Text(key="output", font=data_font, size=biggest_size, expand_x=True, expand_y=True)],
 ]
 
-window = sg.Window("BeetleChat Stream", layout, resizable=True)
+window = sg.Window("BeetleChat Stream", layout, resizable=True, finalize=True) #mod-dch: 5/19
 
 
 def update_output(window, content):
