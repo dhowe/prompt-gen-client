@@ -6,18 +6,11 @@ import socketio
 
 socket_io = socketio.Client()
 
-driver_uid = 'test@test.com'
-# driver_uid = "alex.calderwood@tenderclaws.com"
-
-dashboard_url = 'ws://localhost:5000'
-#dashboard_url = 'ws://192.241.209.27:5050/'  #
-
 responses = {
     'load_scene_recieved': False,
     'end_scene_recieved': False,
     'on_connect': '',
 }
-
 
 @socket_io.event
 def on_scene_loaded(packet):
@@ -69,11 +62,15 @@ def disconnect():
 if __name__ == "__main__":
     config = json.load(open(os.path.dirname(__file__) + '/../config.json'))
 
-    # attempt to connect
-    socket_io.connect(dashboard_url, auth={
-        'uid': driver_uid,
-        'secret': config['dashboard_password']
-    }, wait_timeout=1)
+    try:
+        # attempt to connect
+        socket_io.connect(config['dashboard_url'], auth={
+            'uid': config['dashboard_user'],
+            'secret': config['dashboard_password']
+        }, wait_timeout=1)
+    except Exception as e:
+        print(f"Could not connect to socket, error: '{e}'")
+
 
     # check that we're connected
     time.sleep(1)
@@ -95,8 +92,8 @@ if __name__ == "__main__":
         if not responses['load_scene_recieved']:
             socket_io.disconnect()
             raise Exception('/load_scene not recieved ')
-        if 0:
-            time.sleep(10)
+        if 1:
+            time.sleep(5)
 
             # end the scene
             socket_io.emit('end_scene')

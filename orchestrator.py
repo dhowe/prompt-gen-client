@@ -1,14 +1,13 @@
 import obs_control
-from obs_control import obsc_stream, obsc_background, available_function_dict
+from obs_control import obsc_stream, available_function_dict
 
 import dashboard_socket
 import threading
 import config
 import shows
 import gui
-import time
 
-import inspect
+# NEXT: reverse elements before putting at queue head OR keep on 'on-deck' space for sendNow msgs
 
 window = gui.window
 event_queue = gui.event_queue

@@ -141,6 +141,7 @@ class OBSController:
         """
         Pushes an empty subtitle to the head of the queue
         """
+        # THIS IS DANGEROUS
         self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold)))
     
     def bypass_queue_write_empty_subtitles(self):
@@ -188,14 +189,18 @@ class OBSController:
         sent = False
         if self.connected:
             for line in split_new_lines(lines):
+                needs_spacer = True
                 broken_lines = self.split_long_lines(line)
-                for broken_line in broken_lines:
-                    words = self.get_words(broken_line)
-                    self.subtitles_queue.queue.insert(0, (broken_line, words))
-                    print(f"Pushing '{broken_line}' to head of queue, '{words}' words")
+                for bline in reversed(broken_lines):
+                    if needs_spacer:
+                        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold)))
+                        needs_spacer = False
+                    numwords = self.get_words(bline)
+                    self.subtitles_queue.queue.insert(0, (bline, numwords))
+                    print(f"Pushing '{bline}' to head of queue, '{numwords}' words")
 
             # Timeout the very last subtitle at the end
-            self._add_empty_subtitles_to_head_of_queue()
+            # self._add_empty_subtitles_to_head_of_queue()
 
             sent = True
             message = "Subtitles sent to OBS"
@@ -210,9 +215,11 @@ class OBSController:
             for line in split_new_lines(lines):
                 broken_lines = self.split_long_lines(line)
                 for broken_line in broken_lines:
-                    words = self.get_words(broken_line)
-                    self.subtitles_queue.put((broken_line, words))
-                    print(f"Putting '{broken_line}' in queue, '{words}' words")
+                    numwords = self.get_words(broken_line)
+                    self.subtitles_queue.put((broken_line, numwords))
+                    bline = broken_line.replace(r'\n', '\\n')
+                    #print(f"Putting '{bline}' in queue ({words} words)")
+                    print(f"Q.add: '{bline}'")
             
             # Hold the last one a bit longer
             # last_extra_word_proxy = randint(*self.last_message_extra_words)
@@ -220,6 +227,8 @@ class OBSController:
 
             # Timeout the very last subtitle at the end
             self._add_empty_subtitles_to_queue()
+            self.subtitles_queue.put((None, float(self.blank_hold)))
+
             
             sent = True
             message = "Subtitles sent to OBS"
