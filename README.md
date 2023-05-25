@@ -2,5 +2,6 @@
 
 ## Usage Instructions
 
-    pip install -r requirements.txt
-    python orchestrator.py
+$ pipenv shell
+$ pipenv install
+$ pipenv run python orchestrator.py
