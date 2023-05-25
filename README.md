@@ -1,6 +1,6 @@
 ## prompt-gen-client
 
-### Usage
+### usage:
 
 ```bash
 $ pipenv shell
