@@ -302,7 +302,7 @@ window = sg.Window(
     titlebar_font=('', 17)
 )  # mod-dch: 5/19
 
-print(f'GUI loaded in {perf.stop()})')
+perf.stop()
 
 
 def update_output(win, content):

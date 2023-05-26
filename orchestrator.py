@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
     orchestrator_thread = threading.Thread(target=orchestrator_loop)
     orchestrator_thread.start()
+
     # The GUI has to be on the main thread because tkinter is not thread safe
     gui.main_loop_gui(gui.window)
-
     orchestrator_thread.join()

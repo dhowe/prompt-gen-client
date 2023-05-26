@@ -57,4 +57,4 @@ def get_json_data(filename):
     return json_content, file_name, message
 
 if __name__ == "__main__":
-    get_json_data("https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=share_link")
+    print(get_json_data("https://drive.google.com/file/d/119s7vwybLpmjMgffnyOlBrv7aH3R1ncU/view?usp=share_link"))

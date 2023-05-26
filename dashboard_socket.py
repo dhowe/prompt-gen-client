@@ -141,17 +141,19 @@ def manual_disconnect():
 
 
 def listen():
-
-    # attempt to connect
-    sio.connect(dashboard_url, auth={
-        'uid': dashboard_user,
-        'secret': dashboard_secret,
-    }, wait_timeout=1)
-
-    # check that we're connected
-    time.sleep(1)
-    if not dashboard_status == 'connected':
-        sio.disconnect()
-        raise Exception(f'/connect failed with status={dashboard_status}')
-
+    for i in range(0,3):
+        try:
+            # attempt to connect
+            sio.connect(dashboard_url, auth={
+                'uid': dashboard_user,
+                'secret': dashboard_secret,
+            }, wait_timeout=1)
+            # check that we're connected
+            time.sleep(1)
+            if not dashboard_status == 'connected':
+                sio.disconnect()
+                raise Exception(f'/connect failed with status={dashboard_status}')
+        except Exception as e:
+            print(f'Try {i}', 'Failed to connect: ', e)
+        
     sio.wait()

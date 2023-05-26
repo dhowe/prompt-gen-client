@@ -10,7 +10,8 @@ class TextToSpeech:
     def __init__(self):
         self.voices = list(voices())
         self.available_voices = self.voices.copy()
-        print(len(self.available_voices), "voices found")
+        print(self.available_voices)
+        # print(list(map(lambda v: v, self.available_voices)))
         self.voice_map = {}
         # print(self.voices[0])
 
