@@ -1,6 +1,9 @@
-# prompt-gen-client
+## prompt-gen-client
 
-## Usage Instructions
+### usage:
 
-    pip install -r requirements.txt
-    python orchestrator.py
+```bash
+$ pipenv shell
+$ pipenv install
+$ pipenv run python orchestrator.py
+```
