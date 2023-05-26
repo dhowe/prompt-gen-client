@@ -1,44 +1,30 @@
-import json
-import time
-
-import socketio
-
-import config
-import gui
+import json, time, socketio, config, gui
 from obs_control import send_subtitles, send_subtitles_now
 
 sio = socketio.Client()
 
-driver_uid = config.get_config_value("dashboard_user")
-driver_password = config.get_config_value("dashboard_password")
+dashboard_load_scene_counter = 0
+dashboard_status = 'not connected'
 dashboard_url = config.get_config_value("dashboard_url")
-# print(driver_uid, driver_password, dashboard_url)
-# dashboard_url = 'ws://192.241.209.27:5050' #'ws://localhost:5050'
-
-responses = {
-    'load_scene_recieved': 0,
-    'end_scene_recieved': 0,
-    'on_connect': '',
-}
-
+dashboard_user = config.get_config_value("dashboard_user")
+dashboard_secret = config.get_config_value("dashboard_password")
 
 @sio.event
 def connect():
-    print(f'Connecting to Dashboard... at {dashboard_url}, uid: {driver_uid}')
-
+    pass
 
 @sio.event
 def on_connect(data):
-    print(f'got /on_connect status={data["status"]}')
-    responses['on_connect'] = data['status']
+    global dashboard_status
+    dashboard_status = data['status']
+    msg = f'Dashboard @{dashboard_url} {dashboard_user}'
     if data['status'] != 'connected':
-        responses['on_connect'] = data['error']
-        gui.message("Failed to connect to Dashboard: " + responses['on_connect'])
-        gui.update_driver(False, driver_uid)
+        msg += f" *ERROR* \"{data['error']}\""
     else:
-        gui.message("Connected to Dashboard")
-        gui.update_driver(True, driver_uid)
-        print(f"Connected to Dashboard", responses['on_connect'])
+        msg += f" {data['status']}"
+    gui.update_driver(dashboard_status, dashboard_user)
+    gui.message(msg)
+    print(msg)
 
 
 @sio.event
@@ -60,15 +46,15 @@ def on_generate(data):
 
 
 @sio.event
-def on_scene_loaded(data):  # this one is pending
+def on_scene_loaded(data):
     print(f'got /on_scene_loaded')
-    responses['load_scene_recieved'] += 1
+    global dashboard_load_scene_counter
+    dashboard_load_scene_counter += 1
 
 
 @sio.event
 def on_scene_complete(data):
     print(f'got /on_scene_complete')
-    responses['end_scene_recieved'] += 1
 
 
 @sio.event
@@ -85,8 +71,8 @@ def on_error(packet):
 def is_driver(data):
     # helper function to check if the currently assigned driver is the one
     # the message comes from
-    is_driver = (data == driver_uid) or \
-                isinstance(data, dict) and data.get("author") == driver_uid
+    is_driver = (data == dashboard_user) or \
+                isinstance(data, dict) and data.get("author") == dashboard_user
     return is_driver, f"{data.get('author')} is not the driver" if not is_driver else ""
 
 
@@ -114,13 +100,11 @@ def disconnect():
 
 
 def update_driver(driver, password):
-    # Change the username that has control over the stream.
-    # All messages they send to the publish queue
-    # will be displayed at the OBS instance
-    global driver_uid, driver_password
-    driver_uid = driver
-    driver_password = password
-    message = f"new driver: {driver_uid} and password {''.join(['*' for _ in driver_password])}"
+    # Change the user controlling the stream: what they publish will display on OBS
+    global dashboard_user, dashboard_secret
+    dashboard_user = driver
+    dashboard_secret = password
+    message = f"new driver: {dashboard_user} secret={''.join(['*' for _ in dashboard_secret])}"
     return message
 
 
@@ -128,30 +112,25 @@ def update_driver(driver, password):
 def start_show(scene_json, scene_name=None):
     if sio.connected:
         force_automode = config.get_config_value("automode", True)
-        print("CHECKBOX is set to ", force_automode)
         try:
             # Set the show mode to automode (so it starts in the dashboard)
             scene_json_dict = json.loads(scene_json)
             if force_automode:
                 scene_json_dict["uistate"]["automode"] = True
-            defined_automode = scene_json_dict['uistate']['automode']
-            message = f"AUTOMODE IS SET TO {defined_automode}"
+            msg = f"AUTOMODE={scene_json_dict['uistate']['automode']}"
             scene_json = json.dumps(scene_json_dict)
         except Exception as e:
-            message = "ERROR: failed to set automode: " + str(e)
+            msg = "ERROR: failed to set automode: " + str(e)
 
-        print(message)
-        gui.message(message)
         sio.emit('load_scene', {'scene_json': scene_json, 'scene_name': scene_name})
     else:
-        message = "ERROR: Failed to start show, dashboard not connected."
-        gui.message(message)
-        print(message)
+        msg = "ERROR: Failed to start show, dashboard not connected"
 
+    print(msg)
+    gui.message(msg)
 
 def stop_show():
-    if sio.connected:
-        sio.emit('end_scene')
+    if sio.connected: sio.emit('end_scene')
 
 
 def manual_disconnect():
@@ -162,16 +141,17 @@ def manual_disconnect():
 
 
 def listen():
+
     # attempt to connect
     sio.connect(dashboard_url, auth={
-        'uid': driver_uid,
-        'secret': driver_password,
+        'uid': dashboard_user,
+        'secret': dashboard_secret,
     }, wait_timeout=1)
 
     # check that we're connected
     time.sleep(1)
-    if responses['on_connect'] != 'connected':
+    if not dashboard_status == 'connected':
         sio.disconnect()
-        raise Exception(f'/connect failed with status={responses["on_connect"]}')
+        raise Exception(f'/connect failed with status={dashboard_status}')
 
     sio.wait()

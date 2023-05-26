@@ -5,6 +5,7 @@ import webbrowser
 import PySimpleGUI as sg  # https://python.libhunt.com/pysimplegui-alternatives
 
 import config
+from helpers import Timer
 from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict, cut_to_scenes
 
 default_driver = config.get_config_value("dashboard_user")
@@ -13,7 +14,8 @@ default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Te
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
-
+perf = Timer('gui')
+perf.start()
 status = ""
 
 
@@ -81,13 +83,13 @@ def format_timer(timer):
 
 
 def connect_to_obs_stream():
-    window['stream_connected'].update("Connecting...")
+    window['stream_connected'].update("Connecting to obs...")
     stream_ip = window['stream_ip'].get()
     stream_port = window['stream_port'].get()
     stream_password = window['stream_password'].get()
-    connected, message = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
-    window['stream_connected'].update(message)
-    return 'connected', message
+    connected, msg = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+    window['stream_connected'].update(msg)
+    return 'connected', msg
 
 
 def connect_to_obs_background():
@@ -95,9 +97,9 @@ def connect_to_obs_background():
     background_ip = window['background_ip'].get()
     backgorund_port = window['background_port'].get()
     backgorund_password = window['background_password'].get()
-    connected, message = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
-    window['background_connected'].update(message)
-    return 'connected', message
+    connected, msg = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
+    window['background_connected'].update(msg)
+    return 'connected', msg
 
 
 sg.theme("LightGray1")
@@ -183,7 +185,8 @@ main_tab = [
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True),
         sg.Button("Update Shows", key="update_sheet"),
         sg.Button(start_message, key="start_stop_schedule"),
-        sg.Checkbox("Force Automode", config.get_config_value("automode", True), key="automode", enable_events=True),
+        sg.Checkbox("Automode", config.get_config_value("automode", True), key="automode", enable_events=True),
+        sg.Checkbox("TTS", config.get_config_value("use_tts", True), key="use_tts", enable_events=True),
     ],
     # function_buttons,
 ]
@@ -280,10 +283,17 @@ layout = [
      sg.Text(key="output", font=data_font, size=biggest_size, expand_x=True, expand_y=True)],
 ]
 
-icon = b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADmElEQVRYheWX2W9NURjFf6emGjqZSihS2iLRGCKGEh4IDRFzgvDghVdEhAd/gQcPEhFDigiRlBgiITVEiGhijCE0gqbGoobqRLvlS9aR09tzz72CPrCTk3PuOXt/e+31rfXtffnvm+cT4JxzwMF2IOQ7sMLzvC72o2Pgwz1gVTtlpN5/CALonMTAnkA+8AZ4GvMtHSgAGoGHwLeIOGn+Q8ovoO4BTAeKgazAez+GLWYcsFggUYrDrjaDEzXL1xRgNvACqAj0b9G9BrgN9BGIgSatRIGTBWCUTQbGALVAU5xYn4AMYCaQp/eRIDpGfQy0euXVAq8DMoFrCt6iew6wEpgGnA7RyG8B+AqcAjoB681GwAQx8UniNOpzgUvAduAZMfkOa7EpCBOM38eoPwJsFSNj9e49MEjCOwFsBh4kubCkGAjm0FZ8VzXjPLAXaADuAEuB10BlyNi4TCQC4AewFWYDb+UG8/oFpSRNoIz+EUCRgKTKLY1RE8QDEFx1b2C5KH8E9NK4JUChUlQhLXQFFuq7PR+SJvx4bVyXyIa2umXAUOCJ8jxEKx8pcBmqgP01aYGqYB2wABgfZ2GhDDiBSpOtrPJNAg4D94EtwCgVnDMCkCmLWopWAx2AHeq/Ru+yNKZGm1EkA55WtxGYI/vZZNWi2QRXqnevZVGrCceAK8Bn1QYTY4limnXnAt1jWQizoXX4onyXKrAxMkt9jgK3NEkPXakCuA8olxALpY3dwEV9b7NBhYnQaeBODciTxSYCH4BXmryz6PakCWsvxUCxdGNgyxSvRfXDSwQA+d2ufsB83csltGz1+a7J0gN7Q7aEaH2bVbq/yLKE1YMoF6RI9QOAs8Au1Xd/k2nSAroHdsQcpcQq4h7po1BC9VvS23GWAJjQroveSlFr+/7ggEvyBWSYQL0S7Tdl09yAviJFGESZLcvV6QTULCvZmA3APOCjJjKvbxIg2weqNFGV4owGusWjOaw5CaZFg/1i8hi4IQYGyO/bdEhZJLdc1FibeKpqRW2s/5NhwKg/qVUUSFwN0sNxrciJ7q7afksEEqXI+pwDLsfbE4LHcvP98JjvqVK+JyCNes5XiTZxvQP6apKTEqen80GGtusagfXn2+95XusTuAFwznkRF671vcg5V+ace+6cW+uc6xTok+g64M8bthdENRfodxWYEUc/SbdfOZb/yfYTZFAD1Sq1f7uZG/I8z0vmj9C/3oAfa8o35qQ9KEcAAAAASUVORK5CYII='
+icon = b'iVBORw0KGgoAAAANSUhEUgAAACsAAAArCAYAAADhXXHAAAAAAXNSR0IArs4c6QAAAIRlWElmTU0AKgAAAAgABQESAAMAAAABAAEAAAEaAAUAAAABAAAASgEbAAUAAAABAAAAUgEoAAMAAAABAAIAAIdpAAQAAAABAAAAWgAAAAAAAABgAAAAAQAAAGAAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAACugAwAEAAAAAQAAACsAAAAAcrvGPAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAVlpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IlhNUCBDb3JlIDYuMC4wIj4KICAgPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICAgICAgPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIKICAgICAgICAgICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iPgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICA8L3JkZjpEZXNjcmlwdGlvbj4KICAgPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KGV7hBwAAC9dJREFUWAm9WWuMXGUZfs6cMzM7O3ubbel2W7ptLQVSLm2ooimIGhQlYKPYXQMRMXhp/IHAD0wkKFNRfqhB8PIDEk0g8cK2RBJ+SCKgxRYkEbChrYWWQi+729btdqe7Mzsz5+bzfGfO7ky7M9wSvtlzznfO916e7/3e733fc9YCYPGYr4XzPfwQnjXDA6eJcgG18vl8U8YmfB/4cT5/L3VbRv+ZwgTmTEBhHsOpiHCvl2/gkKB327acKfcdGfOk6Mf1Nta/jM0vb3ZrDJIzC74esJXH35tZu8b74VzyyMc4YnxW/MAgIIGdx2e8x77z1IC/P/FVuFgeIKxZKJ6gSGuPGnDHk38Pxm/gBxKhFYaZ8O3Mx73Hb/zpl44MY9gewlAQk8WozdLnMVT90x1/XVHa6T/VWey52As9JPibbe8FR+x2IZms2uTi+TQInDMCDQMntDF9TmFXx8bgy0N3bXzrYTyc3AzjEpFlwzC0NluPGCjl/f7NXaXcxYXKqYCjHocSxt9jA88qYodAjP4YzOyYETV7p84czjlwDQRcLcsKA1SsZOdk99ry7sLNHP/xGM4PudETPEK5Qbh1aKv9CDZ7hjnACtevArYlB09FOKhgHh12wjaW90IfNElkQS6abi2b3DaZghCWb7FrsxvA52FRaL3BjV6yhxaJHFTdqpuGG67Sc7nl8J5hSQvq1thMXoISFiFwngnaTRAbDkHSc7qHVfCK1pHycctPBxYtYrn7PCtwAyuRpY24JNXdroUysXJcdAW/SOGWFXBM0EQze2iqAswpyvVIWI9NuDmPM5ugGSZahLgEzjxSj83h5L3ARyKRwHhlEn/0/oPp10J8H59C7+JOFA/MwObPhYeulVlMHDyN+/EPdPfbuMlfi1y2g9b1aWn5GJeAraYg7phn85wao0E9gQCq6UpLIJlwuHQhRirjWJjs5s71sSq3FD94rR/uoIevPfQFdPSnML5rGk+u244bXv00Fq3rQumYi8xtKSS3OXAu4UTLdAVa43h1HEvSC8wautzINIwxklHKU21V41tdQ2PqvRcNRmarDUV+asYNZi4d3MDFwfIo7j2+Eye8U3TmJLy0jxlUcMvPrzNAS56LyqIyvlW9zgB94/ARtC9O4tYHN6KEKryUhxQX84R7Cj8a24mDpVFUAwIVDLOaghT5cw1Kw+Usv6gfNW5Aa8qHikEZu6YPw5uZxGj5JAL+bLr8KCaQGZD/A1/85hY8/9LLQBL416u7ccHyb5vnqaUW6U6SnpuMqEYqJ+HThXYVDxu5cs96a8WrapjrTmf7bN2glkI7V8A67AwGF12BlemFOFj5Hy3toc1J4/d4Bdc98TFcselSPPvoT8ANhVf+vB/rr72YbvO0kbZj6y48ilfxC2clZjjpkcop3N6/AR/tuhCVoEq38I0bREvfDCqTRh22ll35qzZXXzrHrRPAsxjppoGVqQyuHLwNT/zqWex/8Sh+c9/jWH/jBvzul9vw+s7D2PbgM/jk0B1Y4WSAKZDPZ1QKjBzJI8DIX6ldK9kKREvLxtFAAiRFu1fzLjIOazll9XaGZOB5bLr9s+rUWg7f3TIIbInvgYx3GcOR5IQo1TaUNlZLdHPsptcSbP2yKPIq/fale1HxfRwoj+DS4mpcj8tx06ankR3ohO9FIS10ORFKVhKwHRvFQ9M4/UQBboF89giqHuWkek0Ik9x321qClWWjAK4QKLA+2qw0vtK3Hj87sIOxdSGWLl2A/vUr0DWQQ+AqdWk31+zFSyJpY+qcUxh78W2MjJzEY9iDu1ZdyT3ooBxWmFq4uWr0hB39NUHfEqxU2iaRRFaVYG2IvmQv7l11NcI3LVQZjsaeO4yTfSeYZs9eVOXD6vEy6VykCfGHH7ka3U7WyJE8Wd8x4T6Ua50toA54S7CksyqMr7JqJpFGJXRpCcVcD53pdlR7uI8rAdwDVUz+7TSVqZrTskonLcyfzWt2ZRt8ukamO4VUitmN/BoX0HQixQhRMdZN2UlyzFaEpGlsTcFqjqmEEx7zJqwXC2/g6t5LsNDpMUtH90Dpvy5S5zpIdjPGsmDJXpoBdcsLIqy6UIgsq2dJjrFSwMw+F8nzFVcDtNEA494knjn1GjZ0rsYyp48ppjlYE7rW7NkqFQ1NCuSjfckcJr0y7jzwWxwoHUWWoco9xI3ErJPKca7i9AiKk7MFTLc+V0NWZUliglFUzyHVKzsnUD3iI5vOGHl3vvlrTHkVLOLGNbUCBcxXjQpckzirTWL81VJq7E22444lm3D/iZewb+oQUuUUEsxKQiJrCqHxVxZfnuthYnSCV242jnGHRuO6SuESID2Twr7iIdxHed/rH0SP04Zxt8DJRpnQEM5zauIGiqHSFYbcDNY1ubU4hxZemO7CPWP/xN3YgAudZfS5KPMYuaRP0B0UtiYLBeT6cqYy81mhGXtH8pj1CBRHcf/oC7hvyVVY3TaA1e6Esbh8uFVrYlmxWIqDVnsigw5mnym/iGXpPjx07ufRjXYIhDZbZK+af/LeZwye4C/woyK7XrlA+0Fg+B8auBYD6cV0gSI67XZk7TYahzz8NWtNLBuRi1GzjeOgdvECloclVat8rrJ+Dq6mF4E9waJFoBVF6pvu5Jc5dCLjJFFmGBSJa1aI/HWTr+eL+y0sG5NEQnSnmlb17AjG2Zd/KTjVNSqTzx7GmLmakToCdY0M8o+ynk3VyunImtHEGqdXJ5vddwZLbllW9euEexr3HNvO8OJG71SEWi9cfbfi4t84Ar5HRZatIzBxV4mF/HePbcdJyktS7hlTbkRYd9cSLGdMnKxnqUACXyjswzd6VuNCDGCmWuZM65DUhLpFvWe+ArcUf1CJBmQ9/WaqFcN/a895Rp7kyve1Su/UWoKtZ1bxPV4uYXW2H4HNV5NpxSUqqeGN/bNSqpCtikqRWakmILacSP0pbiPyn9exhPKKKFGuhMS0NZZ5L/ODrXFSiYGilNjGI8KWgM0YK6WzMXSOnksssIiuymCymsZ1Yej1i9yY5FdS0e6KZPPV4l20+cEaiJJv6VWBGWwKu4tvYTycQXvYBqsj8tXqce54fRsgGi2xXKbEn5quujeNJKyzWdAo5rJ1hkbOuD+DPdNvUf509DyibnqeH2wdud5sny/sxgNHd6Cf8VCvN6pH0+c78E+z6p8gAKVZHqIt8RVSTVeFPU1Wh+j8KR/pCxy45M9STj8z4wMjO7D91J6a8Vu7Q8s4K4vJ+T+Xu8wI62cho9BT8aomNSaXywf5Yl0IkOzkruY6T2DSgNVViUGM7hRfhFg/OCu4JWlajzE44zhYk12CXKod1+TWRStDYmN5SmCvtixGnDm1BGt8lo5qU8NVXRcxzLBg5iuNooPyvjTbXRTMOtZjyJKmKxd9Ausn1qFtQcbEWpNB0yxqsnIT0pJPNbLq4jUdy7E6WBpFGzM4B2y+3tlgiZBbhz4m7oRCl6U0mE22GR+cS4lzE7cc2SO671nYg9wiFdUhsxjLLVMiRkCN2YzpojdmvTCmbLqTZsCJy+oSxI9KpnPmyfjs3ov2hoP8FqrBRHc4avt8v58kUo+Vt8cPdF7CZfGs7xyuxR9juunpDm6i4Z5fXNxqyXX9MutE8ok/rEpG42FxjK90Rm5MR9QuTihS8INfL45FYPMJ4WPf5Dv97yDQd9CtdMG2y61tM8XCzV1vdg9Uy1zyuiQnW5sWWaB203iRdWKyuQ5pZh820s/eiY/u5PRzT6w9Pda+zvuLxh7mtt6cj75wSq1RLSBbrDw/0+eDrY88uaH6unNLWAyXRZ85ongbCTbk7Ep73I9GonOESi4dZbgYZXNa8WlD0RFCruxY25rgDzd8feNzfFr7Mhjx6hxLUaIRXANYAl4IhzNZlBNaj8U8auuioZZNtO+n9aItWGYNRbHPADV+3GCVGLABTQsTrPknSDyJ96P3A/FIvzZ2Tcgsvrij5w0zGB4eTuzduzdmMHxr1qyJ17Qmp/nlTN7mlI0j0jE0yH96NGiOaJqCbRQxe/euwZJDst8LfaxkHpjR0P8B1URbd8fXcSEAAAAASUVORK5CYII=0'
+
+# SPLASH_IMAGE_FILE = 'img/dytiscus.png'
+# DISPLAY_TIME_MILLISECONDS = 5000
+#
+# sg.Window("", [[sg.Image(SPLASH_IMAGE_FILE)]], no_titlebar=True, keep_on_top=True) \
+#     .read(timeout=DISPLAY_TIME_MILLISECONDS, close=True)
+
 window = sg.Window(
-    "BeetleChat Orchestrator",
-    layout,
+    title="BeetleChat Orchestrator " + config.get_config_value('version', ''),
+    layout=layout,
     resizable=True,
     finalize=True,
     icon=icon,
@@ -292,14 +302,16 @@ window = sg.Window(
     titlebar_font=('', 17)
 )  # mod-dch: 5/19
 
+print(f'GUI loaded in {perf.stop()})')
 
-def update_output(window, content):
+
+def update_output(win, content):
     # Display content in output window
     if content:
         if isinstance(content, tuple):
             content = content[1]
-        print("content", str(content))
-        window["output"].update(str(content))
+        # print("content", str(content))
+        win["output"].update(str(content))
 
 
 def toggle_subtitles(on):
@@ -337,8 +349,8 @@ def update_shows(current=None, next=None, upcoming=list()):
 
 
 def update_driver(connected, driver_name=None):
-    message = "Driver" if connected else "Driver (Not Connected)"
-    window["driver_label"].update(message)
+    msg = "Driver" if connected else "Driver (Not Connected)"
+    window["driver_label"].update(msg)
 
     uid = "to " + driver_name if driver_name else default_driver
     window["timer_label"].update("No dashboard connection" if not connected else f"Connected {uid}")
@@ -350,9 +362,9 @@ def connect_to_obs_stream():
     stream_ip = window['stream_ip'].get()
     stream_port = window['stream_port'].get()
     stream_password = window['stream_password'].get()
-    connected, message = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
-    window['stream_connected'].update(message)
-    return 'connected', message
+    connected, msg = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+    window['stream_connected'].update(msg)
+    return 'connected', msg
 
 
 def connect_to_obs_background():
@@ -360,15 +372,22 @@ def connect_to_obs_background():
     background_ip = window['background_ip'].get()
     backgorund_port = window['background_port'].get()
     backgorund_password = window['background_password'].get()
-    connected, message = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
-    window['background_connected'].update(message)
-    return 'connected', message
+    connected, msg = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
+    window['background_connected'].update(msg)
+    return 'connected', msg
 
 
 def automode():
     auto = window['automode'].get()
     config.write_config_value("automode", auto)
     msg = f"Force automode set to: {auto}"
+    message(msg)
+
+
+def use_tts():
+    tts_enabled = window['use_tts'].get()
+    config.write_config_value("use_tts", tts_enabled)
+    msg = f"Option tts_enabled set to: {tts_enabled}"
     message(msg)
 
 

@@ -7,7 +7,7 @@ import socketio
 socket_io = socketio.Client()
 
 # driver_uid = 'test@test.com'
-driver_uid = "alex.calderwood@tenderclaws.com"
+dashboard_user = "alex.calderwood@tenderclaws.com"
 
 dashboard_url = 'ws://localhost:5000'
 dashboard_url = 'ws://192.241.209.27:5050/'  #
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # attempt to connect
     socket_io.connect(dashboard_url, auth={
-        'uid': driver_uid,
+        'uid': dashboard_user,
         'secret': config['dashboard_password']
     }, wait_timeout=1)
 
