@@ -2,6 +2,7 @@ import threading
 
 import config
 import dashboard_socket
+import text_to_speech
 import gui
 import obs_control
 import shows
@@ -79,6 +80,7 @@ def start_stop_schedule(window):
 
 
 def orchestrator_loop():
+
     listen_thread = threading.Thread(target=dashboard_socket.listen)
     listen_thread.start()
 
@@ -99,7 +101,7 @@ def orchestrator_loop():
         elif event == "update_sheet":
             gui.message(f"Fetching show schedule from {values['sheet']}")
             config.write_config_value("google_sheet_show_sheet_name", values["sheet"])
-            shows.do_show_check_and_set_next_show()
+            shows.do_show_ceck_and_set_next_show()
             shows.schedule.update_shows_gui()
             gui.message("Updated schedule")
         elif event == "set_sleep_time":
@@ -146,6 +148,7 @@ def orchestrator_loop():
     # Stop the background thread
     event_queue.put(("stop", None))
     listen_thread.join()
+    tts_thread.join()
     window.close()
 
 

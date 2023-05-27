@@ -28,9 +28,9 @@ def on_connect(data):
 
 
 @sio.event
-def on_publish(data):
-    print('/on_publish: ', data)
-    update_subtitles(data)
+def on_publish(payload):
+    print('/on_publish: ', payload['data'][0])
+    update_subtitles(payload)
 
 
 @sio.event
@@ -141,19 +141,22 @@ def manual_disconnect():
 
 
 def listen():
+    connected = False
     for i in range(0,3):
-        try:
-            # attempt to connect
-            sio.connect(dashboard_url, auth={
-                'uid': dashboard_user,
-                'secret': dashboard_secret,
-            }, wait_timeout=1)
-            # check that we're connected
-            time.sleep(1)
-            if not dashboard_status == 'connected':
-                sio.disconnect()
-                raise Exception(f'/connect failed with status={dashboard_status}')
-        except Exception as e:
-            print(f'Try {i}', 'Failed to connect: ', e)
+        if not connected:
+            try:
+                # attempt to connect
+                sio.connect(dashboard_url, auth={
+                    'uid': dashboard_user,
+                    'secret': dashboard_secret,
+                }, wait_timeout=1)
+                # check that we're connected
+                time.sleep(1)
+                if not dashboard_status == 'connected':
+                    sio.disconnect()
+                    raise Exception(f'/connect failed with status={dashboard_status}')
+                connected = True
+            except Exception as e:
+                print(f'Try {i}', 'Failed to connect: ', e)
         
     sio.wait()

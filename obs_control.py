@@ -2,14 +2,13 @@ import queue
 import threading
 import time
 import traceback
-import config
+from random import randint
 
 # Reference: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
 import obsws_python as obs
 
+import config
 from text_to_speech import TextToSpeech
-from random import randint
-
 
 
 def debug(text):
@@ -34,29 +33,37 @@ class OBSController:
         self.port = None
         self.password = None
         self.message = None
-        self.last_speaker = 'Domi'
         self._read_obs_settings_from_file(connect=False)
-
-        if name == 'stream': self.speech = TextToSpeech()
 
         self.cl = None
         self.connected = False
 
-        self.subtitles_queue = queue.Queue()
-        self.default_words_per_second = 3
-        self.words_per_second = self.default_words_per_second
-        self.min_delay = config.get_config_value("min_delay", 3)
-        self.blank_hold = config.get_config_value("blank_hold", 0)
-        self.max_rand = config.get_config_value("max_rand", 5)
+        # config params
+        self.min_delay = float(config.get_config_value("min_delay", 2))
+        self.blank_hold = float(config.get_config_value("blank_hold", 0))
+        self.max_rand = float(config.get_config_value("max_rand", 5))
+        self.default_words_per_second = float(config.get_config_value("reading_words_per_second", 7))
         self.interstitial_time = float(config.get_config_value("interstitial_time", 30))
         self.starting_soon_time = float(config.get_config_value("starting_soon_time", 10))
+        self.max_line_chars = int(config.get_config_value("max_chars_per_line", 60))
+        self.words_per_second = self.default_words_per_second
 
         self.on_subtitles_update = lambda x, y: None  # a callback firing when new subtitle is displayed
-        self.subtitles_thread = threading.Thread(target=self.subtitles_process)
-        self.subtitles_on = True
-        self.subtitles_thread.start()
 
-        self.max_line_chars = 60
+        # subtitles
+        if name == 'stream':
+            self.subtitles_queue = queue.Queue()
+            self.subtitles_thread = threading.Thread(target=self.subtitles_process)
+            self.subtitles_on = True
+            self.subtitles_thread.start()
+
+        # text-to-speech
+        if name == 'stream':
+            self.tts_impl = TextToSpeech()
+            self.tts_queue = queue.Queue()
+            self.tts_thread = threading.Thread(target=self.tts_process)
+            self.tts_enabled = True
+            self.tts_thread.start()
 
     def populate_text_boxes(self, text_box_data):
         """text_box_data: a dictionary of text box names and their values"""
@@ -114,6 +121,17 @@ class OBSController:
         except AttributeError:
             return f"Unable to set {key} to {value}"
 
+    def tts_process(self):
+        while True:
+            if self.tts_enabled and not self.tts_queue.empty():
+                try:
+                    item = self.tts_queue.get()
+                    self.tts_impl.speak(item['text'], speaker=item.get('speaker', None))
+                    time.sleep(.1)
+                except Exception as e:
+                    print("Error in obs_control::tts_process()", e)
+                    print(traceback.format_exc())
+
     def subtitles_process(self):
         while True:
             try:
@@ -123,7 +141,8 @@ class OBSController:
                 if self.subtitles_queue.empty():
                     pass
 
-                text, words, line = self.subtitles_queue.get()
+                text, words, to_speak = self.subtitles_queue.get()
+                # print(f'Process: "{text}", {words}, "{to_speak}"')
                 if text is None:
                     text = ""  # A blank hold
                     delay = words
@@ -137,38 +156,38 @@ class OBSController:
                 upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
                 self.on_subtitles_update(text, upcoming)  # Update the GUI
 
-                # do the text to speech
-                if len(text):
-                    parts = text.split(':')
-                else:
-                    parts = ['', '']
+                if to_speak:
+                    # do the text-to-speech
+                    speaker = None
+                    utterance = to_speak
+                    if ':' in to_speak:
+                        parts = to_speak.split(':')
+                        speaker = parts[0].strip()
+                        utterance = parts[1].strip()
 
-                if len(parts) == 1:
-                    self.speech.speak(line, use_stream=True, speaker=self.last_speaker)
-                elif len(parts) == 2:
-                    self.speech.speak(line, use_stream=True, speaker=parts[0])
-                    self.last_speaker = parts[0]
-                else:
-                    self.speech.speak(text, use_stream=True, speaker=self.last_speaker)
-                    print(f'FAILED parsing: "{text}" parts={parts}')
+                    self.tts_queue.put({
+                        'text': utterance,
+                        'speaker': speaker
+                    })
 
                 time.sleep(delay + rand_delay)
+
             except Exception as e:
-                print("Error with obs_control::subtitles_process()", e)
+                print("Error in obs_control::subtitles_process()", e)
                 print(traceback.format_exc())
 
     def _add_empty_subtitles_to_queue(self):
         """
         Appends an empty subtitle to the queue
         """
-        self.subtitles_queue.put((None, float(self.blank_hold)))
+        self.subtitles_queue.put((None, float(self.blank_hold), None))
 
     def _add_empty_subtitles_to_head_of_queue(self):
         """
         Pushes an empty subtitle to the head of the queue
         """
         # THIS IS DANGEROUS
-        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold)))
+        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold), None))
 
     def bypass_queue_write_empty_subtitles(self):
         """
@@ -219,9 +238,9 @@ class OBSController:
                 broken_lines = self.split_long_lines(line)
                 for bline in reversed(broken_lines):
                     if needs_spacer:
-                        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold)))
+                        self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold), None))
                         needs_spacer = False
-                    numwords = self.get_wprocessords(bline)
+                    numwords = self.num_words(bline)
                     self.subtitles_queue.queue.insert(0, (bline, numwords, line))
                     print(f"Pushing '{bline}' to head of queue, '{numwords}' words")
 
@@ -240,12 +259,13 @@ class OBSController:
         if self.connected:
             for line in split_new_lines(lines):
                 broken_lines = self.split_long_lines(line)
-                for broken_line in broken_lines:
-                    numwords = self.get_words(broken_line)
-                    self.subtitles_queue.put((broken_line, numwords, line))
-                    bline = broken_line.replace(r'\n', '\\n')
+                for i, broken_line in enumerate(broken_lines):
+                    numwords = self.num_words(broken_line)
+                    to_speak = line if i == 0 else ''
+                    self.subtitles_queue.put((broken_line, numwords, to_speak))
+                    # bline = broken_line.replace(r'\n', '\\n')
                     # print(f"Putting '{bline}' in queue ({words} words)")
-                    print(f"Q.add: '{bline}'")
+                    # print(f"Q.add: '{bline}'")
 
             # Hold the last one a bit longer
             # last_extra_word_proxy = randint(*self.last_message_extra_words)
@@ -253,7 +273,7 @@ class OBSController:
 
             # Timeout the very last subtitle at the end
             self._add_empty_subtitles_to_queue()
-            self.subtitles_queue.put((None, float(self.blank_hold)))
+            self.subtitles_queue.put((None, float(self.blank_hold), None))
 
             sent = True
             message = "Subtitles sent to OBS"
@@ -262,7 +282,7 @@ class OBSController:
 
         return sent, message
 
-    def get_words(self, text):
+    def num_words(self, text):
         if text:
             return len(text.split())
         return 0
@@ -391,7 +411,7 @@ def show_inputs():
 
 
 def show_texts():
-    if obsc_stream.cl is not None:
+    if obsc_stream and obsc_stream.cl:
         inputs = obsc_stream.cl.get_input_list().inputs
         texts = [i for i in inputs if 'text' in i['inputKind']]
         texts = [source['inputName'] for source in texts]

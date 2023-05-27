@@ -14,7 +14,7 @@ default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Te
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
-perf = Timer('gui')
+perf = Timer(text="[GUI] loaded in {:0.2f} secs")
 perf.start()
 status = ""
 
@@ -407,9 +407,9 @@ def clear_subtitles():
     window['upcoming_subtitles'].update(value="")
 
 
-def main_loop_gui(window):
-    while True:
-        event, values = window.read(timeout=100)
+def main_loop_gui(win):
+    while True and win:
+        event, values = win.read(timeout=100)
         if event == "__TIMEOUT__":
             continue
         elif event == sg.WIN_CLOSED:
@@ -423,12 +423,12 @@ def main_loop_gui(window):
                 result = function(values["value"])
             else:
                 result = function()
-            update_output(window, result)
+            update_output(win, result)
         elif event == "new_next_show":
             # TODO move this somewhere
-            next = values[0]
+            nxt = values[0]
             upcoming = values[1]
             upcoming = upcoming[1:] if len(upcoming) > 1 else []
-            update_shows(next=next, upcoming=values[1])
+            update_shows(next=nxt, upcoming=values[1])
         else:
             event_queue.put((event, values))
