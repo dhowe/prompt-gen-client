@@ -8,10 +8,11 @@ import obs_control
 import shows
 from obs_control import obsc_stream, available_function_dict
 
-window = gui.window
-schedule = shows.schedule
-event_queue = gui.event_queue
 
+window = gui.window
+event_queue = gui.event_queue
+dashboard_socket.update_driver(gui.default_driver, gui.default_driver_pass)
+schedule = shows.schedule
 
 def on_subtitles(text, upcoming_list):
     """Set the GUI callback for updating the subtitles"""
@@ -20,7 +21,7 @@ def on_subtitles(text, upcoming_list):
     if upcoming_list:
         upcoming = "\n".join(upcoming_list)
         window["upcoming_subtitles"].update(value=upcoming)
-
+obsc_stream.on_subtitles_update = on_subtitles
 
 def technical():
     """Cut to the technical difficulties scene"""
@@ -36,27 +37,27 @@ def technical():
         gui.current_obs_scene(tech_scene, None)
 
     return response
-
+obs_control.add_function("technical", technical)
 
 def off_air():
     """Cut to the off_air"""
     gui.message("Cutting to off air")
     return obsc_stream.cut_to_scene(config.get_config_value("off_air_scene", "Off Air"))
-
+obs_control.add_function("off_air", off_air)
 
 def toggle_subtitles():
     """Play/pause the subtitles"""
     on = obsc_stream.toggle_subtitles_on()
     gui.toggle_subtitles(on)
     gui.message("Resuming subtitles" if on else "Pausing subtitles")
-
+obs_control.add_function("toggle_subtitles", toggle_subtitles)
 
 def clear_subtitles():
     """Clear the subtitles"""
     obsc_stream.clear_subtitles_queue()
     gui.clear_subtitles()
     obsc_stream.bypass_queue_write_empty_subtitles()
-
+obs_control.add_function("clear_subtitles", clear_subtitles)
 
 def start_schedule_gui(window):
     window['start_stop_schedule'].update(text=gui.stop_message, button_color='red')
@@ -120,8 +121,7 @@ def orchestrator_loop():
             result = obs_control.obsc_stream.set_config_value_from_gui("interstitial_time", values["interstitial_time"])
             gui.message(result)
         elif event == "set_starting_soon_time":
-            result = obs_control.obsc_stream.set_config_value_from_gui("starting_soon_time",
-                                                                       values["starting_soon_time"])
+            result = obs_control.obsc_stream.set_config_value_from_gui("starting_soon_time", values["starting_soon_time"])
             gui.message(result)
         elif event == "set_min_delay":
             result = obs_control.obsc_stream.set_config_value_from_gui("min_delay", float(values["min_delay"]))
@@ -148,20 +148,10 @@ def orchestrator_loop():
     # Stop the background thread
     event_queue.put(("stop", None))
     listen_thread.join()
-    tts_thread.join()
     window.close()
 
 
 if __name__ == "__main__":
-    print('Orchestrator loaded...')
-
-    dashboard_socket.update_driver(gui.default_driver, gui.default_driver_pass)
-
-    obsc_stream.on_subtitles_update = on_subtitles
-    obs_control.add_function("technical", technical)
-    obs_control.add_function("off_air", off_air)
-    obs_control.add_function("toggle_subtitles", toggle_subtitles)
-    obs_control.add_function("clear_subtitles", clear_subtitles)
 
     orchestrator_thread = threading.Thread(target=orchestrator_loop)
     orchestrator_thread.start()
@@ -169,3 +159,6 @@ if __name__ == "__main__":
     # The GUI has to be on the main thread because tkinter is not thread safe
     gui.main_loop_gui(gui.window)
     orchestrator_thread.join()
+
+    print('Orchestrator loaded...')
+

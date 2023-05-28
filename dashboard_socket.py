@@ -1,4 +1,9 @@
-import json, time, socketio, config, gui
+import config
+import gui
+import json
+import socketio
+import time
+
 from obs_control import send_subtitles, send_subtitles_now
 
 sio = socketio.Client()
@@ -9,9 +14,11 @@ dashboard_url = config.get_config_value("dashboard_url")
 dashboard_user = config.get_config_value("dashboard_user")
 dashboard_secret = config.get_config_value("dashboard_password")
 
+
 @sio.event
 def connect():
     pass
+
 
 @sio.event
 def on_connect(data):
@@ -129,6 +136,7 @@ def start_show(scene_json, scene_name=None):
     print(msg)
     gui.message(msg)
 
+
 def stop_show():
     if sio.connected: sio.emit('end_scene')
 
@@ -142,7 +150,7 @@ def manual_disconnect():
 
 def listen():
     connected = False
-    for i in range(0,3):
+    for i in range(1, 4):
         if not connected:
             try:
                 # attempt to connect
@@ -158,5 +166,5 @@ def listen():
                 connected = True
             except Exception as e:
                 print(f'Try {i}', 'Failed to connect: ', e)
-        
+
     sio.wait()
