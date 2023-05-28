@@ -100,7 +100,7 @@ def orchestrator_loop():
         elif event == "update_sheet":
             gui.message(f"Fetching show schedule from {values['sheet']}")
             config.write_value("google_sheet_show_sheet_name", values["sheet"])
-            shows.do_show_ceck_and_set_next_show()
+            shows.do_show_check_and_set_next_show()
             shows.schedule.update_shows_gui()
             gui.message("Updated schedule")
         elif event == "set_sleep_time":
