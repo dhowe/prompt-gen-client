@@ -1,47 +1,29 @@
-
-import random
 import config
+import random
 
 from elevenlabs import generate, voices, play, stream, set_api_key
 
-set_api_key(config.get_config_value('tts_api_key'))
+set_api_key(config.get_value('tts_api_key'))
+
 
 class TextToSpeech:
 
     def __init__(self):
-        # self.on = True
-        # self.queue = queue.Queue()
+        self.debug = True
         self.voices = list(voices())
         self.available_voices = self.voices.copy()
         self.last_voice = self.available_voices[0]
         self.voice_map = {}
-        print('TextToSpeech loaded...')
+        if self.debug: print('Loading text-to-speech...')
         # print(self.voices[0])
 
-    # def queue_utterance(self, utterance):
-    #     self.queue.put(utterance)
-    #     print(f'/tts-queued: {utterance}')
-
-
-    # def stop(self):
-    #     self.on = False
-    #     print('TextToSpeech unloaded...')
-    #
-    # def start(self):
-    #     self.on = True
-    #     self.loop()
-    #
-    # def loop(self):
-    #     print('TextToSpeech loaded...')
-    #     while self.on:
-    #         item = self.queue.get()
-    #         self.speak(item['text'], speaker=item.get('speaker', None))
-    #         time.sleep(.01)
-
     def speak(self, text, **kwargs):
-        if len(text) and config.get_config_value("use_tts", True):
+        if len(text) and config.get_value("use_tts", True):
             speaker = kwargs.get('speaker', 'Narrator')
-            use_stream = config.get_config_value('tts_streaming')
+            use_stream = config.get_value('tts_streaming')
+            stability = config.get_float('tts_stability', .75)
+            similarity = config.get_float('tts_similarity', .75)
+            # print('stability=', type(stability), stability, type(similarity), 'similarity=', similarity)
             if speaker and len(speaker):
                 voice = self.voice_map.get(speaker, None)
                 if not voice:
@@ -50,9 +32,15 @@ class TextToSpeech:
             else:
                 voice = self.last_voice
 
-                # print(self.name_voice_map())
+            if voice.settings:
+                voice.settings.stability = stability
+                voice.settings.similarity_boost = similarity
+
             audio = generate(text=text, voice=voice, stream=use_stream)
-            print(f'/tts {speaker}/{voice.name} -> \'{text}\'')
+
+            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> '
+                                 + f'\'{text}\' [sta={stability}, sim={similarity}]')
+
             if use_stream:
                 stream(audio)
             else:
@@ -71,14 +59,7 @@ class TextToSpeech:
     def get_available_voice(self):
         """remove and return a random voice"""
         if len(self.available_voices) == 0:
-            print('no voices remaining, choosing random...')
+            if self.debug: print('all voices used, choosing random...')
             self.available_voices = self.voices.copy()
         # print('Remaining:', self.available_voice_names())
         return self.available_voices.pop(random.randrange(len(self.available_voices)))
-
-    def insert_pauses(self, text, spacer=' - '):
-        """Inserts an equal number of spaces between words in the text."""
-        words = text.split()
-        spaced_text = (',' + spacer).join(words)
-        print(spaced_text)
-        return spaced_text

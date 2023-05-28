@@ -26,7 +26,8 @@ def split_new_lines(lines):
 
 class OBSController:
     def __init__(self, name) -> None:
-        self.dialogue_text_field = config.get_config_value("subtitle_layer_name", "Subtitle Layer")
+        print(f'Loading obs-{name}...')
+        self.dialogue_text_field = config.get_value("subtitle_layer_name", "Subtitle Layer")
         self.topic = "Topic"
         self.name = name
         self.ip = None
@@ -38,14 +39,15 @@ class OBSController:
         self.cl = None
         self.connected = False
 
+
         # config params
-        self.min_delay = float(config.get_config_value("min_delay", 2))
-        self.blank_hold = float(config.get_config_value("blank_hold", 0))
-        self.max_rand = float(config.get_config_value("max_rand", 5))
-        self.default_words_per_second = float(config.get_config_value("reading_words_per_second", 7))
-        self.interstitial_time = float(config.get_config_value("interstitial_time", 30))
-        self.starting_soon_time = float(config.get_config_value("starting_soon_time", 10))
-        self.max_line_chars = int(config.get_config_value("max_chars_per_line", 60))
+        self.min_delay = float(config.get_value("min_delay", 2))
+        self.blank_hold = float(config.get_value("blank_hold", 0))
+        self.max_rand = float(config.get_value("max_rand", 5))
+        self.default_words_per_second = float(config.get_value("reading_words_per_second", 7))
+        self.interstitial_time = float(config.get_value("interstitial_time", 30))
+        self.starting_soon_time = float(config.get_value("starting_soon_time", 10))
+        self.max_line_chars = int(config.get_value("max_chars_per_line", 60))
         self.words_per_second = self.default_words_per_second
 
         self.on_subtitles_update = lambda x, y: None  # a callback firing when new subtitle is displayed
@@ -64,6 +66,7 @@ class OBSController:
             self.tts_thread = threading.Thread(target=self.tts_process)
             self.tts_enabled = True
             self.tts_thread.start()
+
 
     def populate_text_boxes(self, text_box_data):
         """text_box_data: a dictionary of text box names and their values"""
@@ -116,7 +119,7 @@ class OBSController:
         try:
             # see if self has a variable 'key'
             setattr(self, key, value)
-            config.write_config_value(key, value)
+            config.write_value(key, value)
             return f"Set {key} to {value}"
         except AttributeError:
             return f"Unable to set {key} to {value}"
@@ -201,14 +204,14 @@ class OBSController:
             self.subtitles_queue.queue.clear()
 
     def _write_settings(self, ip, port, password):
-        config.write_config_value(f"{self.name}_obs_ip", ip)
-        config.write_config_value(f"{self.name}_obs_port", port)
-        config.write_config_value(f"{self.name}_obs_password", password)
+        config.write_value(f"{self.name}_obs_ip", ip)
+        config.write_value(f"{self.name}_obs_port", port)
+        config.write_value(f"{self.name}_obs_password", password)
 
     def _read_obs_settings_from_file(self, connect=True):
-        self.ip = config.get_config_value(f"{self.name}_obs_ip")
-        self.port = config.get_config_value(f"{self.name}_obs_port")
-        self.password = config.get_config_value(f"{self.name}_obs_password")
+        self.ip = config.get_value(f"{self.name}_obs_ip")
+        self.port = config.get_value(f"{self.name}_obs_port")
+        self.password = config.get_value(f"{self.name}_obs_password")
         if connect:
             connected, self.message = self.connect(self.ip, self.port, self.password)
             return connected

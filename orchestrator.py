@@ -2,12 +2,10 @@ import threading
 
 import config
 import dashboard_socket
-import text_to_speech
 import gui
 import obs_control
 import shows
 from obs_control import obsc_stream, available_function_dict
-
 
 window = gui.window
 event_queue = gui.event_queue
@@ -31,7 +29,7 @@ def technical():
     obs_control.obsc_stream.pause_subtitles()
     gui.toggle_subtitles(False)
     stop_schedule_gui(window)
-    tech_scene = config.get_config_value("technical_difficulties_scene", "Technical Difficulties")
+    tech_scene = config.get_value("technical_difficulties_scene", "Technical Difficulties")
     response = obsc_stream.cut_to_scene(tech_scene)
     if obsc_stream.connected:
         gui.current_obs_scene(tech_scene, None)
@@ -42,7 +40,7 @@ obs_control.add_function("technical", technical)
 def off_air():
     """Cut to the off_air"""
     gui.message("Cutting to off air")
-    return obsc_stream.cut_to_scene(config.get_config_value("off_air_scene", "Off Air"))
+    return obsc_stream.cut_to_scene(config.get_value("off_air_scene", "Off Air"))
 obs_control.add_function("off_air", off_air)
 
 def toggle_subtitles():
@@ -94,14 +92,14 @@ def orchestrator_loop():
         if event == "update_driver":
             dashboard_socket.manual_disconnect()
             result = dashboard_socket.update_driver(values['driver_uid'], values['driver_password'])
-            config.write_config_value("dashboard_user", values['driver_uid'])
-            config.write_config_value("dashboard_password", values['driver_password'])
+            config.write_value("dashboard_user", values['driver_uid'])
+            config.write_value("dashboard_password", values['driver_password'])
             gui.message(result)
             listen_thread = threading.Thread(target=dashboard_socket.listen)
             listen_thread.start()
         elif event == "update_sheet":
             gui.message(f"Fetching show schedule from {values['sheet']}")
-            config.write_config_value("google_sheet_show_sheet_name", values["sheet"])
+            config.write_value("google_sheet_show_sheet_name", values["sheet"])
             shows.do_show_ceck_and_set_next_show()
             shows.schedule.update_shows_gui()
             gui.message("Updated schedule")
@@ -160,5 +158,5 @@ if __name__ == "__main__":
     gui.main_loop_gui(gui.window)
     orchestrator_thread.join()
 
-    print('Orchestrator loaded...')
+    print('Orchestrator loaded')
 

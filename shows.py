@@ -10,7 +10,7 @@ import time
 from dashboard_socket import start_show, dashboard_load_scene_counter
 
 pd.options.mode.use_inf_as_na = True
-TIMEZONE = config.get_config_value("timezone")
+TIMEZONE = config.get_value("timezone")
 
 
 class Show:
@@ -24,7 +24,7 @@ class Show:
             "stream": data.get("Stream Scene"),
             "background": data.get("Background Scene"),
             "interstitial": data.get("Interstitial Scene"),
-            "starting_soon": config.get_config_value("starting_soon_scene"),
+            "starting_soon": config.get_value("starting_soon_scene"),
         }
         self.link = data.get('Link')
 
@@ -67,7 +67,7 @@ class Show:
         self.did_load_to_dashboard = True
         self._update_json(do_message=True)  # Just in case it changed
         if self.json:
-            gui.update_timer(f"Loading show: {self.name}")
+            gui.update_timer(f"Loading show: {self.name}...")
             tmp_count = dashboard_load_scene_counter
             name = (self.name or "Untitled") + " " + (self.json_file_name or "")
             start_show(self.json, name)
@@ -251,8 +251,8 @@ schedule = ShowSchedule()
 
 def get_all_shows():
     try:
-        sheet_id = config.get_config_value("google_sheet_show_id")
-        sheet_name = config.get_config_value("google_sheet_show_sheet_name")
+        sheet_id = config.get_value("google_sheet_show_id")
+        sheet_name = config.get_value("google_sheet_show_sheet_name")
         gc = gspread.service_account('google_sheets_access.json')
         spreadsheet = gc.open_by_key(sheet_id)
         worksheet = spreadsheet.worksheet(sheet_name)

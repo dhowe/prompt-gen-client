@@ -10,9 +10,9 @@ sio = socketio.Client()
 
 dashboard_load_scene_counter = 0
 dashboard_status = 'not connected'
-dashboard_url = config.get_config_value("dashboard_url")
-dashboard_user = config.get_config_value("dashboard_user")
-dashboard_secret = config.get_config_value("dashboard_password")
+dashboard_url = config.get_value("dashboard_url")
+dashboard_user = config.get_value("dashboard_user")
+dashboard_secret = config.get_value("dashboard_password")
 
 
 @sio.event
@@ -36,7 +36,7 @@ def on_connect(data):
 
 @sio.event
 def on_publish(payload):
-    print('/on_publish: ', payload['data'][0])
+    print('/on_publish: ', payload['data'][0]['content'])
     update_subtitles(payload)
 
 
@@ -118,7 +118,7 @@ def update_driver(driver, password):
 # Events we emit
 def start_show(scene_json, scene_name=None):
     if sio.connected:
-        force_automode = config.get_config_value("automode", True)
+        force_automode = config.get_value("automode", True)
         try:
             # Set the show mode to automode (so it starts in the dashboard)
             scene_json_dict = json.loads(scene_json)

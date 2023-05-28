@@ -8,9 +8,12 @@ import config
 from helpers import Timer
 from obs_control import obsc_stream, obsc_background, available_functions, available_function_dict, cut_to_scenes
 
-default_driver = config.get_config_value("dashboard_user")
-default_driver_pass = config.get_config_value("dashboard_password", "")
-default_sheet_name = config.get_config_value("google_sheet_show_sheet_name", "Test")
+print('Loading interface...')
+
+app_version = 'v0.8.6'
+default_driver = config.get_value("dashboard_user")
+default_driver_pass = config.get_value("dashboard_password", "")
+default_sheet_name = config.get_value("google_sheet_show_sheet_name", "Test")
 
 # Create a queue to communicate between threads
 event_queue = queue.Queue()
@@ -185,8 +188,8 @@ main_tab = [
         sg.InputText(default_sheet_name, key="sheet", size=small_label, expand_x=True),
         sg.Button("Update Shows", key="update_sheet"),
         sg.Button(start_message, key="start_stop_schedule"),
-        sg.Checkbox("Automode", config.get_config_value("automode", True), key="automode", enable_events=True),
-        sg.Checkbox("TTS", config.get_config_value("use_tts", True), key="use_tts", enable_events=True),
+        sg.Checkbox("Automode", config.get_value("automode", True), key="automode", enable_events=True),
+        sg.Checkbox("TTS", config.get_value("use_tts", True), key="use_tts", enable_events=True),
     ],
     # function_buttons,
 ]
@@ -219,13 +222,13 @@ scene_settings = [
         "Warning, don't change these while a schedule is running. First stop the schedule, update, wait 8 seconds, and restart.")],
     [
         sg.Text("Interstitial scene duration", size=label_size, expand_x=True),
-        sg.InputText(config.get_config_value("interstitial_time"), key="interstitial_time", size=small_label,
+        sg.InputText(config.get_value("interstitial_time"), key="interstitial_time", size=small_label,
                      expand_x=True),
         sg.Button("Set interstitial duration", key="set_interstitial_time")
     ],
     [
         sg.Text("Starting soon / title scene duration", size=label_size, expand_x=True),
-        sg.InputText(config.get_config_value("starting_soon_time"), key="starting_soon_time", size=small_label,
+        sg.InputText(config.get_value("starting_soon_time"), key="starting_soon_time", size=small_label,
                      expand_x=True),
         sg.Button("Set title duration", key="set_starting_soon_time")
     ],
@@ -295,11 +298,8 @@ icon = b'iVBORw0KGgoAAAANSUhEUgAAACsAAAArCAYAAADhXXHAAAAAAXNSR0IArs4c6QAAAIRlWEl
 #     titlebar_font=('', 17)
 # )  # mod-dch: 5/19
 
-window = sg.Window("BeetleChat Orchestrator " + config.get_config_value('version', ''),
+window = sg.Window(f"BeetleChat Orchestrator {app_version}",
                    layout, resizable=True, finalize=True, icon=icon)
-
-perf.stop()
-
 
 def update_output(win, content):
     # Display content in output window
@@ -380,14 +380,14 @@ def connect_to_obs_background():
 
 def automode():
     auto = window['automode'].get()
-    config.write_config_value("automode", auto)
+    config.write_value("automode", auto)
     msg = f"Force automode set to: {auto}"
     message(msg)
 
 
 def use_tts():
     tts_enabled = window['use_tts'].get()
-    config.write_config_value("use_tts", tts_enabled)
+    config.write_value("use_tts", tts_enabled)
     msg = f"Option tts_enabled set to: {tts_enabled}"
     message(msg)
 
@@ -433,3 +433,6 @@ def main_loop_gui(win):
             update_shows(next=nxt, upcoming=values[1])
         else:
             event_queue.put((event, values))
+
+perf.stop()
+print('Connecting to dashboard...')
