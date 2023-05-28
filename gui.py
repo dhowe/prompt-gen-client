@@ -362,20 +362,25 @@ def connect_to_obs_stream():
     stream_ip = window['stream_ip'].get()
     stream_port = window['stream_port'].get()
     stream_password = window['stream_password'].get()
-    connected, msg = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
-    window['stream_connected'].update(msg)
-    return 'connected', msg
+    try:
+        connected, msg = obsc_stream.update_obs_connection(stream_ip, stream_port, stream_password)
+        window['stream_connected'].update(msg)
+        return 'connected', msg
+    except Exception as e:
+        print('ERROR (connecting to OBS-stream)', e)
 
 
 def connect_to_obs_background():
     window['background_connected'].update("Connecting...")
     background_ip = window['background_ip'].get()
-    backgorund_port = window['background_port'].get()
-    backgorund_password = window['background_password'].get()
-    connected, msg = obsc_background.update_obs_connection(background_ip, backgorund_port, backgorund_password)
-    window['background_connected'].update(msg)
-    return 'connected', msg
-
+    background_port = window['background_port'].get()
+    background_password = window['background_password'].get()
+    try:
+        connected, msg = obsc_background.update_obs_connection(background_ip, background_port, background_password)
+        window['background_connected'].update(msg)
+        return 'connected', msg
+    except Exception as e:
+        print('ERROR (connecting to OBS-background)', e)
 
 def automode():
     auto = window['automode'].get()
