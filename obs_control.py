@@ -8,7 +8,7 @@ from random import randint
 import obsws_python as obs
 
 import config
-#from text_to_speech import TextToSpeech
+from text_to_speech import TextToSpeech
 
 
 def debug(text):
@@ -58,12 +58,12 @@ class OBSController:
             self.subtitles_thread.start()
 
         # text-to-speech
-        # if name == 'stream':
-        #     self.tts_impl = TextToSpeech()
-        #     self.tts_queue = queue.Queue()
-        #     self.tts_thread = threading.Thread(target=self.tts_process)
-        #     self.tts_enabled = True
-        #     self.tts_thread.start()
+        if name == 'stream':
+            self.tts_impl = TextToSpeech()
+            self.tts_queue = queue.Queue()
+            self.tts_thread = threading.Thread(target=self.tts_process)
+            self.tts_enabled = True
+            self.tts_thread.start()
 
     def populate_text_boxes(self, text_box_data):
         """text_box_data: a dictionary of text box names and their values"""
@@ -156,19 +156,19 @@ class OBSController:
                 upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
                 self.on_subtitles_update(text, upcoming)  # Update the GUI
 
-                # if to_speak:
-                #     # do the text-to-speech
-                #     speaker = None
-                #     utterance = to_speak
-                #     if ':' in to_speak:
-                #         parts = to_speak.split(':')
-                #         speaker = parts[0].strip()
-                #         utterance = parts[1].strip()
-                #
-                #     self.tts_queue.put({
-                #         'text': utterance,
-                #         'speaker': speaker
-                #     })
+                if to_speak:
+                    # do the text-to-speech
+                    speaker = None
+                    utterance = to_speak
+                    if ':' in to_speak:
+                        parts = to_speak.split(':')
+                        speaker = parts[0].strip()
+                        utterance = parts[1].strip()
+
+                    self.tts_queue.put({
+                        'text': utterance,
+                        'speaker': speaker
+                    })
 
                 time.sleep(delay + rand_delay)
 
