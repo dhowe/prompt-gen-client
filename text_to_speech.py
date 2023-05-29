@@ -1,9 +1,9 @@
-import gspread
-import config
 import random
 
+import gspread
 from elevenlabs import generate, voices, play, stream, set_api_key
 
+import config
 from helpers import find
 
 set_api_key(config.get_value('tts_api_key'))
@@ -19,11 +19,6 @@ class TextToSpeech:
         self.available_voices = self.voices.copy()
         self.last_voice = self.available_voices[0]
         self.load_voice_map()
-        if self.debug:
-            print('text-to-speech.voice_map: {')
-            for key, val in self.voice_map.items():
-                print(' '+key+': '+val.name)
-            print('}')
 
     def load_voice_map(self):
         sheet_id = config.get_value("character_voice_sheet_id")
@@ -34,10 +29,23 @@ class TextToSpeech:
         rows = worksheet.get_all_values()
         for i, row in enumerate(rows):
             if i < 2: continue
-            self.voice_map[row[0]] = voice = find(lambda v: v.name == row[1], self.voices)
+            char_name = row[0]
+            voice_name = row[1]
+            # reserved = row[2]
+            voice = find(lambda v: v.name == voice_name, self.voices)
+            self.voice_map[char_name] = voice
+            self.available_voices.remove(voice)
+
+        if self.debug:
+            print('  Voice-mappings: {')
+            for key, val in self.voice_map.items():
+                print('    "' + key + '": "' + val.name + '"')
+            print('  }')
+            print('  Other-voices: ', list(map(lambda v: v.name, self.available_voices)))
+
+        # self.available_voices = filter(lambda v: not v['reserved'], self.available_voices)
+
         return self
-
-
 
     def speak(self, text, **kwargs):
         if len(text) and config.get_value("use_tts", True):
@@ -45,8 +53,6 @@ class TextToSpeech:
             use_stream = config.get_value('tts_streaming')
             stability = config.get_float('tts_stability', .75)
             similarity = config.get_float('tts_similarity', .75)
-            # print('stability=', type(stability), stability, type(similarity), 'similarity=', similarity)
-            voice = None
             if speaker and len(speaker):
                 voice = self.voice_map.get(speaker, None)
                 if not voice:
@@ -82,6 +88,10 @@ class TextToSpeech:
         """remove and return a random voice from the remaining set"""
         if len(self.available_voices) == 0:
             if self.debug: print('all voices used, choosing random...')
-            self.available_voices = self.voices.copy()
+            self.load_voice_map()
         # print('Remaining:', self.available_voice_names())
         return self.available_voices.pop(random.randrange(len(self.available_voices)))
+
+
+if __name__ == '__main__':
+    tts = TextToSpeech()

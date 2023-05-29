@@ -10,7 +10,7 @@ from obs_control import obsc_stream, obsc_background, available_functions, avail
 
 print('Loading interface...')
 
-app_version = 'v0.9.3'
+app_version = 'v0.9.4'
 default_driver = config.get_value("dashboard_user")
 default_driver_pass = config.get_value("dashboard_password", "")
 default_sheet_name = config.get_value("google_sheet_show_sheet_name", "Test")
