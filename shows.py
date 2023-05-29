@@ -1,3 +1,5 @@
+import traceback
+
 import gspread
 import pandas as pd
 import config
@@ -205,9 +207,14 @@ class ShowSchedule:
             if time_until_show <= pd.Timedelta(seconds=start_thresh):
                 if not self.next_show.did_start:  # if the show hasn't been attempted to start yet
                     self.next_show.start()
+
                     # Not sure that these should go here...
                     gui.clear_subtitles()
                     obs_control.obsc_stream.clear_subtitles_queue()
+
+                    # reload the voice-to-char mappings for the new scene
+                    obs_control.obsc_stream.tts_impl.load_voice_map()
+
                     obs_control.obsc_stream.play_subtitles()
                     self.update_shows_gui()
 
@@ -255,10 +262,12 @@ def get_all_shows():
         sheet_name = config.get_value("google_sheet_show_sheet_name")
         gc = gspread.service_account('google_sheets_access.json')
         spreadsheet = gc.open_by_key(sheet_id)
+        print(f'loaded spreadsheet... now finding {sheet_name}')
         worksheet = spreadsheet.worksheet(sheet_name)
         rows = worksheet.get_all_values()
-        # print the number of rows and each of the ShowName cells
-        df = pd.DataFrame(rows[2:], columns=rows[1])  # Use the second row as headers and skip the first row
+
+        # Use the second row as headers and skip the first row
+        df = pd.DataFrame(rows[2:], columns=rows[1])
         df = df[df['Date'].notna() & df['Time'].notna()]
         df = df[df['Date'].str.strip() != ""]
         df = df[df['Time'].str.strip() != ""]
@@ -268,8 +277,11 @@ def get_all_shows():
 
         return df
     except Exception as e:
-        # print the stack trace
         gui.message(f"Error parsing sheet: {e}")
+        print(f"Exception: {e}")
+        # print the stack trace
+        traceback.print_exc()
+
         return None
 
 
@@ -336,8 +348,8 @@ def get_next_show(upcoming_shows):
 
 
 def do_show_check():
-    prev_next_show = None
     result = None
+    prev_next_show = None
     try:
         upcoming_shows = get_upcoming_shows()
         nextshow = get_next_show(upcoming_shows)
@@ -349,6 +361,7 @@ def do_show_check():
             result = (nextshow, upcoming_shows_objects)
         prev_next_show = nextshow
         return result, None
+
     except Exception as e:
         return None, e
 

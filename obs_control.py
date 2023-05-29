@@ -38,7 +38,7 @@ class OBSController:
 
         self.cl = None
         self.connected = False
-
+        self.tts_impl = None
 
         # config params
         self.min_delay = float(config.get_value("min_delay", 2))
@@ -55,7 +55,7 @@ class OBSController:
         # subtitles
         if name == 'stream':
             self.subtitles_queue = queue.Queue()
-            self.subtitles_thread = threading.Thread(target=self.subtitles_process)
+            self.subtitles_thread = threading.Thread(target=self.process_subtitles)
             self.subtitles_on = True
             self.subtitles_thread.start()
 
@@ -135,7 +135,7 @@ class OBSController:
                     print("Error in obs_control::tts_process()", e)
                     print(traceback.format_exc())
 
-    def subtitles_process(self):
+    def process_subtitles(self):
         while True:
             try:
                 if not self.subtitles_on:

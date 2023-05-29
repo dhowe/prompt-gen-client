@@ -7,7 +7,7 @@ def get_float(key_name, default_value=0.0):
     Takes the name of a key in the CONFIG_FILE and returns its value as a float.
     Usage:
         import config
-        config.get_float("google_sheet_show_id")
+        config.get_float("google_sheet_show_seconds")
     """
     return float(get_value(key_name, default_value))
     # return ("%.4f" % val).replace("-0", "-").lstrip("0")
@@ -25,6 +25,9 @@ def get_value(key_name, default_value=None):
             return config[key_name]
     except (FileNotFoundError, KeyError):
         return default_value
+    except Exception as e:
+        print(f'Exception: {e}')
+        return default_value
 
 def write_value(key_name, value):
     """
@@ -38,8 +41,9 @@ def write_value(key_name, value):
         with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
     except FileNotFoundError:
+        print(f'FileNotFoundError: {e}')
         config = {}
-    
+
     config[key_name] = value
     
     with open(CONFIG_FILE, "w") as f:

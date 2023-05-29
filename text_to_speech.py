@@ -1,7 +1,10 @@
+import gspread
 import config
 import random
 
 from elevenlabs import generate, voices, play, stream, set_api_key
+
+from helpers import find
 
 set_api_key(config.get_value('tts_api_key'))
 
@@ -10,12 +13,31 @@ class TextToSpeech:
 
     def __init__(self):
         self.debug = True
+        self.voice_map = {}
+        if self.debug: print('Loading text-to-speech...')
         self.voices = list(voices())
         self.available_voices = self.voices.copy()
         self.last_voice = self.available_voices[0]
-        self.voice_map = {}
-        if self.debug: print('Loading text-to-speech...')
-        # print(self.voices[0])
+        self.load_voice_map()
+        if self.debug:
+            print('text-to-speech.voice_map: {')
+            for key, val in self.voice_map.items():
+                print(' '+key+': '+val.name)
+            print('}')
+
+    def load_voice_map(self):
+        sheet_id = config.get_value("character_voice_sheet_id")
+        sheet_name = config.get_value("character_voice_sheet_name")
+        gc = gspread.service_account('google_sheets_access.json')
+        spreadsheet = gc.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet(sheet_name)
+        rows = worksheet.get_all_values()
+        for i, row in enumerate(rows):
+            if i < 2: continue
+            self.voice_map[row[0]] = voice = find(lambda v: v.name == row[1], self.voices)
+        return self
+
+
 
     def speak(self, text, **kwargs):
         if len(text) and config.get_value("use_tts", True):
@@ -24,6 +46,7 @@ class TextToSpeech:
             stability = config.get_float('tts_stability', .75)
             similarity = config.get_float('tts_similarity', .75)
             # print('stability=', type(stability), stability, type(similarity), 'similarity=', similarity)
+            voice = None
             if speaker and len(speaker):
                 voice = self.voice_map.get(speaker, None)
                 if not voice:
@@ -40,7 +63,6 @@ class TextToSpeech:
 
             if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> '
                                  + f'\'{text}\' [sta={stability}, sim={similarity}]')
-
             if use_stream:
                 stream(audio)
             else:
@@ -57,7 +79,7 @@ class TextToSpeech:
         return res
 
     def get_available_voice(self):
-        """remove and return a random voice"""
+        """remove and return a random voice from the remaining set"""
         if len(self.available_voices) == 0:
             if self.debug: print('all voices used, choosing random...')
             self.available_voices = self.voices.copy()
