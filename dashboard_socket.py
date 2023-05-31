@@ -36,7 +36,7 @@ def on_connect(data):
 
 @sio.event
 def on_publish(payload):
-    print('/on_publish: ', payload['data'][0]['content'])
+    # print('/on_publish: ', payload['data'][0]['content'])
     update_subtitles(payload)
 
 

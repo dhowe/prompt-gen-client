@@ -16,6 +16,7 @@ class TextToSpeech:
         self.voice_map = {}
         if self.debug: print('Loading text-to-speech...')
         self.voices = list(voices())
+        print(self.voices)
         self.available_voices = self.voices.copy()
         self.last_voice = self.available_voices[0]
         self.load_voice_map()
@@ -47,6 +48,12 @@ class TextToSpeech:
             if not char_name.startswith('__'):
                 self.voice_map[char_name] = voice
 
+        # ### TESTING - REMOVE
+        # del self.voice_map['Beetle 1']
+        # del self.voice_map['Beetle 2']
+        # del self.voice_map['Beetle 3']
+        # self.available_voices = [self.voice_by_name('Domi'), self.voice_by_name('Bella')]
+
         if self.debug:
             print('  Voice-mappings: {')
             for key, val in self.voice_map.items():
@@ -55,9 +62,10 @@ class TextToSpeech:
             print('  Reserved-voices:  ', list(map(lambda v: v.name, reserved_voices)))
             print('  Available-voices: ', list(map(lambda v: v.name, self.available_voices)))
 
-        # self.available_voices = filter(lambda v: not v['reserved'], self.available_voices)
-
         return self
+
+    def voice_by_name(self, name):
+        return find(lambda v: v.name == name, self.voices)
 
     def speak(self, text, **kwargs):
         if len(text) and config.get_value("use_tts", True):
@@ -70,8 +78,8 @@ class TextToSpeech:
                 if not voice:
                     voice = self.get_available_voice()
                     self.voice_map[speaker] = voice
-            else:
-                voice = self.last_voice
+
+            if not voice: voice = self.last_voice
 
             if not voice:
                 print(f'[TTS] Fatal error: no voice for {speaker}, last={self.last_voice}')
@@ -90,7 +98,7 @@ class TextToSpeech:
             else:
                 play(audio)
 
-            self.last_voice = voice # save the active voice as last_voice
+            self.last_voice = voice  # save the active voice as last_voice
 
     def available_voice_names(self):
         return list(map(lambda v: v.name, self.available_voices))
