@@ -34,7 +34,8 @@ class TextToSpeech:
             # reserved = row[2]
             voice = find(lambda v: v.name == voice_name, self.voices)
             self.voice_map[char_name] = voice
-            self.available_voices.remove(voice)
+            if voice in self.available_voices:
+                self.available_voices.remove(voice)
 
         if self.debug:
             print('  Voice-mappings: {')
