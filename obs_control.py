@@ -240,6 +240,7 @@ class OBSController:
                 needs_spacer = True
                 broken_lines = self.split_long_lines(line)
                 for bline in reversed(broken_lines):
+                    bline = bline.strip()
                     if needs_spacer:
                         self.subtitles_queue.queue.insert(0, (None, float(self.blank_hold), None))
                         needs_spacer = False

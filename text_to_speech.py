@@ -16,7 +16,6 @@ class TextToSpeech:
         self.voice_map = {}
         if self.debug: print('Loading text-to-speech...')
         self.voices = list(voices())
-        print(self.voices)
         self.available_voices = self.voices.copy()
         self.last_voice = self.available_voices[0]
         self.load_voice_map()
@@ -69,6 +68,7 @@ class TextToSpeech:
 
     def speak(self, text, **kwargs):
         if len(text) and config.get_value("use_tts", True):
+            random_voice = False
             speaker = kwargs.get('speaker', 'Narrator')
             use_stream = config.get_value('tts_streaming')
             stability = config.get_float('tts_stability', .75)
@@ -76,10 +76,13 @@ class TextToSpeech:
             if speaker and len(speaker):
                 voice = self.voice_map.get(speaker, None)
                 if not voice:
+                    random_voice = True
                     voice = self.get_available_voice()
                     self.voice_map[speaker] = voice
 
-            if not voice: voice = self.last_voice
+            if not voice:
+                random_voice = True
+                voice = self.last_voice
 
             if not voice:
                 print(f'[TTS] Fatal error: no voice for {speaker}, last={self.last_voice}')
@@ -91,8 +94,8 @@ class TextToSpeech:
 
             audio = generate(text=text, voice=voice, stream=use_stream)
 
-            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> '
-                                 + f'\'{text}\' [sta={stability}, sim={similarity}]')
+            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {text}' +
+                                 f'[sta={stability}, sim={similarity}{" rand" if random_voice else ""}]')
             if use_stream:
                 stream(audio)
             else:
