@@ -31,11 +31,9 @@ class TextToSpeech:
         for i, row in enumerate(rows):
             if i < 2: continue
             char_name = row[0].strip()
-            if len(char_name) == 0:
-                continue
+            if len(char_name) == 0: continue
             voice_name = row[1].strip()
-            if len(voice_name) == 0:
-                continue
+            if len(voice_name) == 0: continue
             reserved = row[2].strip() == 'TRUE'
             # print(char_name, voice_name, reserved)
             voice = find(lambda v: v.name == voice_name, self.voices)
