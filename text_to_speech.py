@@ -73,6 +73,10 @@ class TextToSpeech:
             else:
                 voice = self.last_voice
 
+            if not voice:
+                print(f'[TTS] Fatal error: no voice for {speaker}, last={self.last_voice}')
+                return
+
             if voice.settings:
                 voice.settings.stability = stability
                 voice.settings.similarity_boost = similarity
@@ -85,7 +89,8 @@ class TextToSpeech:
                 stream(audio)
             else:
                 play(audio)
-            self.last_voice = voice
+
+            self.last_voice = voice # save the active voice as last_voice
 
     def available_voice_names(self):
         return list(map(lambda v: v.name, self.available_voices))
