@@ -27,22 +27,35 @@ class TextToSpeech:
         spreadsheet = gc.open_by_key(sheet_id)
         worksheet = spreadsheet.worksheet(sheet_name)
         rows = worksheet.get_all_values()
+        reserved_voices = []
         for i, row in enumerate(rows):
             if i < 2: continue
-            char_name = row[0]
-            voice_name = row[1]
-            # reserved = row[2]
+            char_name = row[0].strip()
+            if len(char_name) == 0:
+                continue
+            voice_name = row[1].strip()
+            if len(voice_name) == 0:
+                continue
+            reserved = row[2].strip() == 'TRUE'
+            # print(char_name, voice_name, reserved)
             voice = find(lambda v: v.name == voice_name, self.voices)
-            self.voice_map[char_name] = voice
-            if voice in self.available_voices:
-                self.available_voices.remove(voice)
+            if not voice:
+                print(f'bad voice mapping, ignoring "{char_name}" -> "{voice_name}"')
+                continue
+            if reserved:
+                if voice in self.available_voices:
+                    self.available_voices.remove(voice)
+                reserved_voices.append(voice)
+            if not char_name.startswith('__'):
+                self.voice_map[char_name] = voice
 
         if self.debug:
             print('  Voice-mappings: {')
             for key, val in self.voice_map.items():
                 print('    "' + key + '": "' + val.name + '"')
             print('  }')
-            print('  Other-voices: ', list(map(lambda v: v.name, self.available_voices)))
+            print('  Reserved-voices:  ', list(map(lambda v: v.name, reserved_voices)))
+            print('  Available-voices: ', list(map(lambda v: v.name, self.available_voices)))
 
         # self.available_voices = filter(lambda v: not v['reserved'], self.available_voices)
 
