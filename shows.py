@@ -1,14 +1,15 @@
+import threading
+import time
 import traceback
 
 import gspread
 import pandas as pd
-import config
 import pytz
-import threading
+
+import config
+import drive_files
 import gui
 import obs_control
-import drive_files
-import time
 from dashboard_socket import start_show, dashboard_load_scene_counter
 
 pd.options.mode.use_inf_as_na = True
@@ -111,7 +112,7 @@ class Show:
         scene = self.obs_scene_changes["interstitial"]
 
         # DCH: updated 5/31
-        gui.do_scene_cut(interstitial=scene) #, background=None)
+        gui.do_scene_cut(interstitial=scene, background=None)
 
         self.load_scene_to_dashboard()
         gui.message(f"!Interstitial!")
@@ -123,7 +124,7 @@ class Show:
         self.did_starting_soon = True
 
         # any of the rows in the sheet can be used as a source of text
-        print('populate_text_boxes',self.data);
+        print('populate_text_boxes', self.data)
         obs_control.obsc_stream.populate_text_boxes(self.data)
 
         time.sleep(0.05)
@@ -379,7 +380,7 @@ def do_show_check_and_set_next_show():
         gui.update_shows(next=nextshow, upcoming=upcoming_shows)
     elif error:
         # gui.update_shows(next=nextshow, upcoming=upcoming_shows)
-        gui.update_shows(next=None, upcoming=None) # updated: DCH 5/25
+        gui.update_shows(next=None, upcoming=None)  # updated: DCH 5/25
     else:
         gui.update_shows(None, [])
 
