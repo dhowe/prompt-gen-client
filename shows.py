@@ -112,7 +112,7 @@ class Show:
         scene = self.obs_scene_changes["interstitial"]
 
         # DCH: updated 5/31
-        gui.do_scene_cut(interstitial=scene, background=None)
+        gui.do_scene_cut(interstitial=scene, background='Blank')
 
         self.load_scene_to_dashboard()
         gui.message(f"!Interstitial!")
@@ -124,7 +124,7 @@ class Show:
         self.did_starting_soon = True
 
         # any of the rows in the sheet can be used as a source of text
-        print('populate_text_boxes', self.data)
+        #print('populate_text_boxes', self.data)    
         obs_control.obsc_stream.populate_text_boxes(self.data)
 
         time.sleep(0.05)
