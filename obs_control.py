@@ -155,10 +155,6 @@ class OBSController:
                     rand_delay = randint(0, self.max_rand)
                     delay = reading_delay + rand_delay
 
-                self.change_text(self.dialogue_text_field, text)
-                upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
-                self.on_subtitles_update(text, upcoming)  # Update the GUI
-
                 if to_speak:
                     # do the text-to-speech
                     speaker = None
@@ -172,6 +168,12 @@ class OBSController:
                         'text': utterance,
                         'speaker': speaker
                     })
+
+                #time.sleep(delay + rand_delay) ??
+
+                self.change_text(self.dialogue_text_field, text)
+                upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]
+                self.on_subtitles_update(text, upcoming)  # Update the GUI
 
                 time.sleep(delay + rand_delay)
 
