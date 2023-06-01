@@ -44,15 +44,15 @@ class Show:
     def __repr__(self):
         content = f"'{self.name}' at {self.time}"
         content += f" Stream: '{self.obs_scene_changes['stream']}'"
-        content += f" Background: '{self.obs_scene_changes['background']}'"
-        content += f" Interstitial: '{self.obs_scene_changes['interstitial']}'"
+        content += f" Back: '{self.obs_scene_changes['background']}'"
+        content += f" Inter: '{self.obs_scene_changes['interstitial']}'"
         # content += f" Title Card: {self.obs_scene_changes['starting_soon']}"
-        content += f" Scene File: '{self.json_file_name}'" if self.json_file_name else ""
+        content += f" File: '{self.json_file_name}'" if self.json_file_name else ""
         return content
 
     def _update_json(self, do_message=False):
         if do_message:
-            gui.message(f"Updating json for '{self.link}'")
+            gui.message(f"Updating JSON for '{self.link}'")
 
         if self.link:
             self.json, self.json_file_name, message = drive_files.get_json_data(self.link)
@@ -80,7 +80,7 @@ class Show:
             else:
                 message = f"Failed to start {self.name}: {self.json_file_name}"
         else:
-            message = f"No json found for {self.link}"
+            message = f"No JSON found for {self.link}"
 
         obs_control.obsc_stream.clear_subtitles_queue()
         gui.clear_subtitles()
@@ -106,7 +106,7 @@ class Show:
             obs_control.obsc_stream.play_subtitles()
             gui.message(f"!Show started!")
         else:
-            gui.message(f"Not cutting to {self.name} because no json was found.")
+            gui.message(f"Not cutting to '{self.name}' as no JSON was found.")
 
     def interstitial(self):
         self.did_interstitial = True
