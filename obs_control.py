@@ -48,6 +48,7 @@ class OBSController:
         self.interstitial_time = float(config.get_value("interstitial_time", 30))
         self.starting_soon_time = float(config.get_value("starting_soon_time", 10))
         self.max_line_chars = int(config.get_value("max_chars_per_line", 60))
+        self.post_tts_delay = int(config.get_value("post_tts_delay", 1))
         self.words_per_second = self.default_words_per_second
 
         self.on_subtitles_update = lambda x, y: None  # a callback firing when new subtitle is displayed
@@ -92,21 +93,29 @@ class OBSController:
             self.words_per_second = float(words_per_second)
             return f"Reading speed set to {self.words_per_second} words per second."
         except ValueError:
-            return "Unable to set sleep time. Please enter a number."
+            return "Unable to set words_per_second time. Please enter a number."
 
     def set_subtitle_max_rand_delay(self, max_rand):
         try:
-            self.words_per_second = float(max_rand)
-            return f"Maximum random range set to {self.words_per_second} seconds."
+            self.max_rand = float(max_rand)
+            return f"Maximum random range set to {self.max_rand} seconds."
         except ValueError:
-            return "Unable to set sleep time. Please enter a number."
+            return "Unable to set max_rand time. Please enter a number."
 
     def set_subtitle_blank_hold(self, blank_hold):
         try:
             self.blank_hold = float(blank_hold)
             return f"Blank hold time set to {self.blank_hold} seconds."
         except ValueError:
-            return "Unable to set random range time. Please enter a number."
+            return "Unable to set blank_hold time. Please enter a number."
+
+    def set_post_tts_delay(self, post_tts_delay):
+        try:
+            self.post_tts_delay = float(post_tts_delay)
+            return f"TTS delay time set to {self.post_tts_delay} seconds."
+        except ValueError:
+            return "Unable to set TTS delay. Please enter a number."
+
 
     def set_subtitle_blank_hold(self, blank_hold):
         try:
@@ -169,7 +178,7 @@ class OBSController:
                         'speaker': speaker
                     })
 
-                #time.sleep(delay + rand_delay) ??
+                time.sleep(self.post_tts_delay)
 
                 self.change_text(self.dialogue_text_field, text)
                 upcoming = [show[0] for show in list(self.subtitles_queue.queue) if show[0]]

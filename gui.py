@@ -10,7 +10,7 @@ from obs_control import obsc_stream, obsc_background, available_functions, avail
 
 print('Loading interface...')
 
-app_version = 'v0.9.6'
+app_version = 'v0.9.7'
 default_driver = config.get_value("dashboard_user")
 default_driver_pass = config.get_value("dashboard_password", "")
 default_sheet_name = config.get_value("google_sheet_show_sheet_name", "Test")
@@ -214,6 +214,11 @@ subtitle_settings = [
         sg.Text("Hold between new messages (sec)", size=label_size, expand_x=True),
         sg.InputText(obsc_stream.blank_hold, key="blank_hold", size=number, expand_x=True),
         sg.Button("Set hold time", key="set_blank_hold"),
+    ],
+    [
+        sg.Text("Delay after TTS before subtitle display (sec)", size=label_size, expand_x=True),
+        sg.InputText(obsc_stream.blank_hold, key="post_tts_delay", size=number, expand_x=True),
+        sg.Button("Set TTS delay", key="set_post_tts_delay"),
     ],
 ]
 
@@ -435,4 +440,3 @@ def main_loop_gui(win):
             event_queue.put((event, values))
 
 perf.stop()
-print('Connecting to dashboard...')

@@ -84,6 +84,7 @@ def orchestrator_loop():
     listen_thread.start()
 
     # event_queue.put(("connect_to_obs_stream", 'connect to obs ????'))
+    # event_queue.put(("update_driver", {'driver_uid':'', 'driver_password':''}))
 
     # Main event loop for listening to GUI events
     while True:
@@ -114,6 +115,10 @@ def orchestrator_loop():
         elif event == "set_blank_hold":
             # TODO these should get consolidated into a single function
             result = obsc_stream.set_subtitle_blank_hold(values["blank_hold"])
+            gui.message(result)
+        elif event == "set_post_tts_delay": #DCH
+            # TODO these should get consolidated into a single function
+            result = obsc_stream.set_post_tts_delay(values["post_tts_delay"])
             gui.message(result)
         elif event == "set_interstitial_time":
             result = obs_control.obsc_stream.set_config_value_from_gui("interstitial_time", values["interstitial_time"])

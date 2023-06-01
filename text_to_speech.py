@@ -1,4 +1,5 @@
 import random
+import re
 
 import gspread
 from elevenlabs import generate, voices, play, stream, set_api_key
@@ -50,12 +51,6 @@ class TextToSpeech:
             if not char_name.startswith('__'):
                 self.voice_map[char_name] = voice
 
-        # ### TESTING - REMOVE
-        # del self.voice_map['Beetle 1']
-        # del self.voice_map['Beetle 2']
-        # del self.voice_map['Beetle 3']
-        # self.available_voices = [self.voice_by_name('Domi'), self.voice_by_name('Bella')]
-
         if self.debug:
             print('  Voice-mappings: {')
             for key, val in self.voice_map.items():
@@ -72,6 +67,7 @@ class TextToSpeech:
     def speak(self, text, **kwargs):
         if len(text) and config.get_value("use_tts", True):
             random_voice = False
+            spoken_text = re.sub(r'\([^)]+\)', '', text)
             speaker = kwargs.get('speaker', 'Narrator')
             use_stream = config.get_value('tts_streaming')
             stability = config.get_float('tts_stability', .75)
@@ -89,7 +85,7 @@ class TextToSpeech:
 
             if not voice:
                 random_voice = True
-                voice = self.last_voice
+                voice = self.last_voice # default in case no other voice is found
 
             if not voice:
                 print(f'[TTS] Fatal error: no voice for {speaker}, last={self.last_voice}')
@@ -99,9 +95,9 @@ class TextToSpeech:
                 voice.settings.stability = stability
                 voice.settings.similarity_boost = similarity
 
-            audio = generate(text=text, voice=voice, stream=use_stream)
+            audio = generate(text=spoken_text, voice=voice, stream=use_stream)
 
-            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {text} ' +
+            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {spoken_text} ' +
                                  f'[sta={stability}, sim={similarity}{" rand" if random_voice else ""}]')
             if use_stream:
                 stream(audio)
@@ -124,9 +120,10 @@ class TextToSpeech:
         if len(self.available_voices) == 0:
             if self.debug: print('all voices used, choosing random...')
             self.load_voice_map()
-        # print('Remaining:', self.available_voice_names())
+
         count = len(self.available_voices)
-        return self.available_voices.pop(random.randrange()) if count == 0 else None
+        # print(f'{count} remaining:', self.available_voice_names())
+        return self.available_voices.pop(random.randrange(count)) if count > 0 else None
 
 
 if __name__ == '__main__':

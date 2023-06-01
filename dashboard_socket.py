@@ -149,6 +149,7 @@ def manual_disconnect():
 
 
 def listen():
+    print('Connecting to dashboard...')
     connected = False
     for i in range(1, 4):
         if not connected:
@@ -159,7 +160,7 @@ def listen():
                     'secret': dashboard_secret,
                 }, wait_timeout=1)
                 # check that we're connected
-                time.sleep(1)
+                time.sleep(.1)
                 if not dashboard_status == 'connected':
                     sio.disconnect()
                     raise Exception(f'/connect failed with status={dashboard_status}')
