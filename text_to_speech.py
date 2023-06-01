@@ -73,6 +73,7 @@ class TextToSpeech:
             use_stream = config.get_value('tts_streaming')
             stability = config.get_float('tts_stability', .75)
             similarity = config.get_float('tts_similarity', .75)
+            voice = None
             if speaker and len(speaker):
                 voice = self.voice_map.get(speaker, None)
                 if not voice:
@@ -94,7 +95,7 @@ class TextToSpeech:
 
             audio = generate(text=text, voice=voice, stream=use_stream)
 
-            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {text}' +
+            if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {text} ' +
                                  f'[sta={stability}, sim={similarity}{" rand" if random_voice else ""}]')
             if use_stream:
                 stream(audio)

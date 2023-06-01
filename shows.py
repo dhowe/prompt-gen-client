@@ -41,17 +41,17 @@ class Show:
         self.did_load_to_dashboard = False
 
     def __repr__(self):
-        content = f"{self.name} at {self.time}"
-        content += f" Stream: {self.obs_scene_changes['stream']}"
-        content += f" Background: {self.obs_scene_changes['background']}"
-        content += f" Interstitial: {self.obs_scene_changes['interstitial']}"
+        content = f"'{self.name}' at {self.time}"
+        content += f" Stream: '{self.obs_scene_changes['stream']}'"
+        content += f" Background: '{self.obs_scene_changes['background']}'"
+        content += f" Interstitial: '{self.obs_scene_changes['interstitial']}'"
         # content += f" Title Card: {self.obs_scene_changes['starting_soon']}"
-        content += f" Scene File: {self.json_file_name}" if self.json_file_name else ""
+        content += f" Scene File: '{self.json_file_name}'" if self.json_file_name else ""
         return content
 
     def _update_json(self, do_message=False):
         if do_message:
-            gui.message(f"Updating json for {self.link}")
+            gui.message(f"Updating json for '{self.link}'")
 
         if self.link:
             self.json, self.json_file_name, message = drive_files.get_json_data(self.link)
@@ -69,7 +69,7 @@ class Show:
         self.did_load_to_dashboard = True
         self._update_json(do_message=True)  # Just in case it changed
         if self.json:
-            gui.update_timer(f"Loading show: {self.name}...")
+            gui.update_timer(f"Loading show: '{self.name}'...")
             tmp_count = dashboard_load_scene_counter
             name = (self.name or "Untitled") + " " + (self.json_file_name or "")
             start_show(self.json, name)
@@ -109,7 +109,9 @@ class Show:
     def interstitial(self):
         self.did_interstitial = True
         scene = self.obs_scene_changes["interstitial"]
-        gui.do_scene_cut(interstitial=scene)
+
+        # DCH: updated 5/31
+        gui.do_scene_cut(interstitial=scene) #, background=None)
 
         self.load_scene_to_dashboard()
         gui.message(f"!Interstitial!")
@@ -119,8 +121,11 @@ class Show:
             self.load_scene_to_dashboard()
 
         self.did_starting_soon = True
-        obs_control.obsc_stream.populate_text_boxes(
-            self.data)  # any of the rows in the sheet can be used as a source of text
+
+        # any of the rows in the sheet can be used as a source of text
+        print('populate_text_boxes',self.data);
+        obs_control.obsc_stream.populate_text_boxes(self.data)
+
         time.sleep(0.05)
         gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
         gui.message(f"!Starting soon!")

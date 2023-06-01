@@ -329,9 +329,9 @@ def current_obs_scene(stream, background):
 
 def update_shows(current=None, next=None, upcoming=list()):
     if current:
-        window["current_show"].update(current)
+        window["current_show"].update(f"{current}")
     if next:
-        window["next_show"].update(next)
+        window["next_show"].update(f"{next}")
     else:
         window["next_show"].update("No shows scheduled")
 
@@ -428,7 +428,7 @@ def main_loop_gui(win):
         elif event == "new_next_show":
             # TODO move this somewhere
             nxt = values[0]
-            upcoming = values[1]
+            upcoming = values[1] # ??
             upcoming = upcoming[1:] if len(upcoming) > 1 else []
             update_shows(next=nxt, upcoming=values[1])
         else:
