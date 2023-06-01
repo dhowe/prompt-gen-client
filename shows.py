@@ -96,11 +96,12 @@ class Show:
         self.did_start = True
 
         if self.json:
-            # Cut to the scene
+            # DCH: Cut to the scene, with background already started in 'starting_soon'
             gui.do_scene_cut(
-                stream=self.obs_scene_changes["stream"],
-                background=self.obs_scene_changes["background"]
+                stream=self.obs_scene_changes["stream"]
+                #background=self.obs_scene_changes["background"]
             )
+
             # Resume the subtitles (which should have a queue by now)
             obs_control.obsc_stream.play_subtitles()
             gui.message(f"!Show started!")
@@ -124,11 +125,15 @@ class Show:
         self.did_starting_soon = True
 
         # any of the rows in the sheet can be used as a source of text
-        #print('populate_text_boxes', self.data)    
+        # print('populate_text_boxes', self.data)
         obs_control.obsc_stream.populate_text_boxes(self.data)
 
         time.sleep(0.05)
-        gui.do_scene_cut(stream=self.obs_scene_changes["starting_soon"])
+        gui.do_scene_cut(
+            stream=self.obs_scene_changes["starting_soon"],
+            #DCH start the background stream while title cards are showing
+            background=self.obs_scene_changes["background"]
+        )
         gui.message(f"!Starting soon!")
 
 
@@ -268,7 +273,7 @@ def get_all_shows():
         sheet_name = config.get_value("google_sheet_show_sheet_name")
         gc = gspread.service_account('google_sheets_access.json')
         spreadsheet = gc.open_by_key(sheet_id)
-        print(f'loaded spreadsheet... now finding {sheet_name}')
+        print(f'Loaded spreadsheet... finding \'{sheet_name}\'')
         worksheet = spreadsheet.worksheet(sheet_name)
         rows = worksheet.get_all_values()
 

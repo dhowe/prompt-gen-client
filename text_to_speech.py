@@ -13,14 +13,17 @@ class TextToSpeech:
 
     def __init__(self):
         self.debug = True
-        self.voice_map = {}
         if self.debug: print('Loading text-to-speech...')
+        self.voice_map = {}
+        self.available_voices = None
         self.voices = list(voices())
-        self.available_voices = self.voices.copy()
-        self.last_voice = self.available_voices[0]
+        self.last_voice = None
         self.load_voice_map()
 
     def load_voice_map(self):
+        self.available_voices = self.voices.copy()
+        if not self.last_voice:
+            self.last_voice = self.available_voices[0]
         sheet_id = config.get_value("character_voice_sheet_id")
         sheet_name = config.get_value("character_voice_sheet_name")
         gc = gspread.service_account('google_sheets_access.json')
@@ -79,7 +82,10 @@ class TextToSpeech:
                 if not voice:
                     random_voice = True
                     voice = self.get_available_voice()
-                    self.voice_map[speaker] = voice
+                    if voice:
+                        self.voice_map[speaker] = voice
+                    else:
+                        print('[WARN] No available voices: defaulting to last-used voice')
 
             if not voice:
                 random_voice = True
@@ -119,7 +125,8 @@ class TextToSpeech:
             if self.debug: print('all voices used, choosing random...')
             self.load_voice_map()
         # print('Remaining:', self.available_voice_names())
-        return self.available_voices.pop(random.randrange(len(self.available_voices)))
+        count = len(self.available_voices)
+        return self.available_voices.pop(random.randrange()) if count == 0 else None
 
 
 if __name__ == '__main__':

@@ -61,13 +61,13 @@ def start_schedule_gui(window):
     window['start_stop_schedule'].update(text=gui.stop_message, button_color='red')
     message = f"Starting schedule." + f" Next show: {schedule.next_show}" if schedule.next_show else "Schedule started: No shows scheduled."
     gui.message(message)
-    event_queue.put(("update_output", message))
+    event_queue.put(("update_output", message)) ## is this doing anything?
 
 
 def stop_schedule_gui(window):
     window['start_stop_schedule'].update(text=gui.start_message, button_color=gui.sg.theme_button_color())
     message = "Stopping schedule."
-    event_queue.put(("update_output", message))
+    event_queue.put(("update_output", message)) ## is this doing anything?
 
 
 def start_stop_schedule(window):
@@ -140,6 +140,8 @@ def orchestrator_loop():
             gui.connect_to_obs_stream()
         elif event in available_function_dict.keys():
             event_queue.put((event, values))
+        elif event == "update_output":
+            pass # do we need this event?
         else:
             print(f'[WARN] unknown event: {event}')
 

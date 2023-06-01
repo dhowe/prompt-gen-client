@@ -54,14 +54,14 @@ def on_generate(data):
 
 @sio.event
 def on_scene_loaded(data):
-    print(f'got /on_scene_loaded')
+    print(f'/on_scene_loaded')
     global dashboard_load_scene_counter
     dashboard_load_scene_counter += 1
 
 
 @sio.event
 def on_scene_complete(data):
-    print(f'got /on_scene_complete')
+    print(f'/on_scene_complete')
 
 
 @sio.event
@@ -71,7 +71,7 @@ def on_error(packet):
     It can only be overridden be sending a new load_scene msg
     '''
     msg = packet["data"]["message"]
-    print(f'got /on_error message="{msg}"')
+    print(f'/on_error message="{msg}"')
     gui.message(f"Server Error: {msg}")
 
 
