@@ -1,4 +1,4 @@
-## The Orchestrator
+## Orchestrator
 
 ### Requirements 
 
