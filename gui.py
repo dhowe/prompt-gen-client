@@ -137,13 +137,23 @@ for name, func in available_functions:
 # Links
 dashboard_event = "Dashboard"
 dashboard_link, dashboard_action = create_link(dashboard_event, "http://192.241.209.27:5050/")
-shows_event = "Shows Spreadsheet"
+
+shows_event = "Schedule"
 shows_link, shows_action = create_link(shows_event,
                                        "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
+
+voices_event = "Voices"
+voices_link, voices_action = create_link(voices_event,
+                                       "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
+
+docs_event = "Documentation"
+docs_link, docs_action = create_link(docs_event,
+                                       "https://github.com/dcannizzaro/Beetlemania/tree/main#beetlemania")
 
 links = [
     [dashboard_link, sg.Text("Warning: opening a second dashboard instance will break things")],
     [shows_link],
+    [docs_link],
 ]
 
 main_tab = [

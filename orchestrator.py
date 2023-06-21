@@ -135,6 +135,8 @@ def orchestrator_loop():
             gui.dashboard_action()
         elif event == gui.shows_event:
             gui.shows_action()
+        elif event == gui.docs_event:
+            gui.docs_action()
         elif event == "connect_to_obs_background":
             gui.connect_to_obs_background()
         elif event == "automode":

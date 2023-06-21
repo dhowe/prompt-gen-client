@@ -99,12 +99,15 @@ class TextToSpeech:
 
             if self.debug: print(f'/tts \'{speaker}\'/\'{voice.name}\' -> {spoken_text} ' +
                                  f'[sta={stability}, sim={similarity}{" rand" if random_voice else ""}]')
+
+            self.last_voice = voice  # save the active voice as last_voice
+
             if use_stream:
-                stream(audio)
+                bytes = stream(audio)
+                if bytes: print('stream complete')
             else:
                 play(audio)
 
-            self.last_voice = voice  # save the active voice as last_voice
 
     def available_voice_names(self):
         return list(map(lambda v: v.name, self.available_voices))

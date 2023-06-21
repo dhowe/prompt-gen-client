@@ -1,0 +1,43 @@
+{
+    "uid": "j.noland@tenderclaws.com",
+    "history": [],
+    "published": [],
+    "uistate": {
+        "once_through": false,
+        "randomized": false,
+        "automode": true,
+        "automode_delay": 1501,
+        "autopub_delay": 14951,
+        "staged": [],
+        "prepub": [],
+        "actions": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        ]
+    },
+    "actions": [
+        "Continue the scene, but have Madame Beetle draw the king of pentacles card",
+        "Continue the scene, but have Madame Beetle connect the first and the second card",
+        "Continue the scene, but have Madame Beetle reflect on the nature of the past and the present",
+        "Continue the scene, but have Madame Beetle draw the Hierophant card",
+        "Continue the scene, but have Madame Beetle connect the second and third card",
+        "Continue the scene, but have Madame Beetle reflect on the nature of the present and the future",
+        "Continue the scene, but have Madame Beetle give a warning to the traveler"
+    ],
+    "user_prompt": "The scene has one character (Madame Beetle). The scene opens in what appear to be a vardo wagon. Madame Beetle is an old beetle with mystical fortunetelling powers. Do not include a narrator. Write very short lines, spoken by Madame Beetle, in which she reads Tarot card - the first card she pulls is: The Devil",
+    "system_prompt": "You are PlaywrightAI, a large language model designed to interactively generate dramatic scripts. When prompted by the user, you should output a single sentence spoken by Madame Beetle for a sophisticated and engaging theatrical scene. Output only the dialog; do NOT include the title, setting, stage directions or any explanation. Do NOT include a Narrator.",
+    "params": {
+        "model": "gpt-4",
+        "max_context_tokens": 8192,
+        "n": 1,
+        "top_p": 1.0,
+        "temperature": 0.8,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+    }
+}
