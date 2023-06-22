@@ -131,12 +131,17 @@ def orchestrator_loop():
             gui.message(result)
         elif event == "start_stop_schedule":
             start_stop_schedule(window)
+
+        # TODO links should all be consolidated into a single function
         elif event == gui.dashboard_event:
             gui.dashboard_action()
         elif event == gui.shows_event:
             gui.shows_action()
+        elif event == gui.voices_event:
+            gui.voices_action()
         elif event == gui.docs_event:
             gui.docs_action()
+
         elif event == "connect_to_obs_background":
             gui.connect_to_obs_background()
         elif event == "automode":

@@ -10,7 +10,7 @@ from obs_control import obsc_stream, obsc_background, available_functions, avail
 
 print('Loading interface...')
 
-app_version = 'v0.9.7'
+app_version = 'v0.9.8'
 default_driver = config.get_value("dashboard_user")
 default_driver_pass = config.get_value("dashboard_password", "")
 default_sheet_name = config.get_value("google_sheet_show_sheet_name", "Test")
@@ -144,15 +144,16 @@ shows_link, shows_action = create_link(shows_event,
 
 voices_event = "Voices"
 voices_link, voices_action = create_link(voices_event,
-                                       "https://docs.google.com/spreadsheets/d/1lXononLyDu7_--xHODvQwB_h9LywvctLCdbzYRNVZRc/edit#gid=0")
+                                       "https://docs.google.com/spreadsheets/d/1gnjhtZSARylhs5KCDBnwbXUYM8CsFwl4vFhlDkcC3Ks/edit#gid=0")
 
 docs_event = "Documentation"
 docs_link, docs_action = create_link(docs_event,
                                        "https://github.com/dcannizzaro/Beetlemania/tree/main#beetlemania")
 
 links = [
-    [dashboard_link, sg.Text("Warning: opening a second dashboard instance will break things")],
+    [dashboard_link, sg.Text("warning: using multiple dashboards as the same user is not recommended")],
     [shows_link],
+    [voices_link],
     [docs_link],
 ]
 
